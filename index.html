@@ -2581,7 +2581,944 @@ function initApp(){
    ============================================================ */
 APP.load();
 if(!APP.state.onboarded){Onboard.buildDots();document.getElementById('onboarding').classList.add('open');}
-else{seedData();initApp();}
+else{seedData();initApp();initAlarmEngine();}
+
+
+/* ============================================================
+   ALARM & NOTIFICATION ENGINE v1.0
+   Complete real-time reminder, alarm, and notification system
+   ============================================================ */
+const Alarm = {
+  _ticker: null,
+  _audioCtx: null,
+  _currentAlarm: null,
+  _soundLoop: null,
+  _vibLoop: null,
+  _navigateTo: null,
+  _missedTasks: [],
+
+  /* ── INIT ─────────────────────────────────────────────── */
+  init() {
+    this._requestPermission();
+    this._registerSW();
+    this._ticker = setInterval(() => this._tick(), 30000); // every 30s
+    this._tick(); // immediate first check
+    this._checkMorningBriefing();
+    this._injectRemindersNav();
+    console.log('🔔 Alarm Engine initialized');
+  },
+
+  /* ── PERMISSION ───────────────────────────────────────── */
+  async _requestPermission() {
+    if ('Notification' in window && Notification.permission === 'default') {
+      try { await Notification.requestPermission(); } catch(e) {}
+    }
+  },
+
+  /* ── SERVICE WORKER ───────────────────────────────────── */
+  async _registerSW() {
+    if (!('serviceWorker' in navigator)) return;
+    const swCode = `
+      self.addEventListener('message', e => {
+        if (e.data && e.data.type === 'ALARM') {
+          self.registration.showNotification(e.data.title, {
+            body: e.data.body,
+            icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">⚡</text></svg>',
+            badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">⚡</text></svg>',
+            vibrate: [200, 100, 200, 100, 200],
+            requireInteraction: true,
+            tag: e.data.tag || 'lifeos-alarm',
+            data: e.data
+          });
+        }
+      });
+      self.addEventListener('notificationclick', e => {
+        e.notification.close();
+        e.waitUntil(clients.matchAll({type:'window'}).then(cs => {
+          for (const c of cs) { if ('focus' in c) return c.focus(); }
+          if (clients.openWindow) return clients.openWindow('/');
+        }));
+      });
+    `;
+    try {
+      const blob = new Blob([swCode], { type: 'application/javascript' });
+      const swUrl = URL.createObjectURL(blob);
+      this._swReg = await navigator.serviceWorker.register(swUrl, { scope: '/' });
+    } catch(e) {}
+  },
+
+  /* ── MAIN TICK (every 30s) ────────────────────────────── */
+  _tick() {
+    const now = new Date();
+    if (this._isQuietHours(now)) return;
+    this._checkReminders(now);
+    this._checkMedicines(now);
+    this._checkWaterReminder(now);
+    this._checkBillsDue(now);
+    this._checkOverdueTasks(now);
+    this._checkHabitReminder(now);
+    this._checkGroceryAlerts(now);
+  },
+
+  /* ── QUIET HOURS ──────────────────────────────────────── */
+  _isQuietHours(now) {
+    const qh = APP.state.alarmSettings?.quietHours;
+    if (!qh || !qh.enabled) return false;
+    const h = now.getHours();
+    const start = parseInt(qh.start?.split(':')[0] || 22);
+    const end = parseInt(qh.end?.split(':')[0] || 7);
+    if (start > end) return h >= start || h < end;
+    return h >= start && h < end;
+  },
+
+  /* ── CHECK CUSTOM REMINDERS ───────────────────────────── */
+  _checkReminders(now) {
+    const reminders = APP.state.alarmSettings?.reminders || [];
+    const nowMs = now.getTime();
+    reminders.forEach(r => {
+      if (r.dismissed) return;
+      const fireMs = new Date(r.fireAt).getTime();
+      if (Math.abs(nowMs - fireMs) < 35000 && !r.fired) {
+        r.fired = true;
+        r.firedAt = now.toISOString();
+        APP.save();
+        this._fire({
+          id: r.id,
+          title: r.title,
+          body: r.body || '',
+          emoji: this._typeEmoji(r.type),
+          type: r.type,
+          priority: r.priority || 'normal',
+          navigateTo: this._typeNav(r.type),
+          sound: r.sound !== false,
+          vibrate: r.vibrate !== false,
+          snoozeable: true,
+        });
+        this._addHistory({ title: r.title, type: r.type, time: now.toISOString(), action: 'fired' });
+        if (r.recur && r.recur !== 'none') {
+          this._scheduleNextRecur(r, now);
+        }
+      }
+    });
+  },
+
+  /* ── MEDICINE REMINDERS ───────────────────────────────── */
+  _checkMedicines(now) {
+    const meds = APP.state.health.medicines || [];
+    const hm = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    meds.forEach(m => {
+      if (!m.time) return;
+      const [mh, mm] = m.time.split(':');
+      const medMs = now.getHours() * 60 + now.getMinutes();
+      const targetMs = parseInt(mh) * 60 + parseInt(mm);
+      const diff = Math.abs(medMs - targetMs);
+      const key = `med_${m.id}_${APP.today()}`;
+      if (diff <= 1 && !this._firedToday(key)) {
+        this._markFiredToday(key);
+        this._fire({
+          id: key, title: `💊 ${m.name}`, body: `${m.dose} — ${m.freq}`,
+          emoji: '💊', type: 'medicine', priority: 'high',
+          navigateTo: 'health', sound: true, vibrate: true, snoozeable: true,
+        });
+        this._addHistory({ title: m.name, type: 'medicine', time: now.toISOString(), action: 'fired' });
+      }
+    });
+  },
+
+  /* ── WATER REMINDERS (every 2h if under goal) ─────────── */
+  _checkWaterReminder(now) {
+    const h = now.getHours();
+    if (h < 8 || h > 21) return;
+    const water = APP.state.health.water || 0;
+    const goal = APP.state.user.waterGoal || 8;
+    if (water >= goal) return;
+    const key = `water_${APP.today()}_${Math.floor(h / 2)}`;
+    if (!this._firedToday(key)) {
+      this._markFiredToday(key);
+      const remaining = goal - water;
+      this._fire({
+        id: key, title: '💧 Time to Hydrate!',
+        body: `You've had ${water}/${goal} glasses. Drink ${remaining} more today!`,
+        emoji: '💧', type: 'water', priority: 'normal',
+        navigateTo: 'health', sound: true, vibrate: true, snoozeable: true,
+      });
+      this._addHistory({ title: 'Water Reminder', type: 'water', time: now.toISOString(), action: 'fired' });
+    }
+  },
+
+  /* ── BILLS DUE ────────────────────────────────────────── */
+  _checkBillsDue(now) {
+    const today = now.getDate();
+    const subs = APP.state.finance.subscriptions || [];
+    subs.forEach(s => {
+      const key = `bill_${s.id}_${APP.today().slice(0,7)}`;
+      if (Math.abs(s.due - today) <= 1 && !this._firedToday(key)) {
+        this._markFiredToday(key);
+        this._fire({
+          id: key, title: `📱 ${s.name} due ${s.due === today ? 'today' : 'tomorrow'}`,
+          body: `Payment of ${APP.fc(s.amount)} due on day ${s.due}`,
+          emoji: '💰', type: 'finance', priority: 'high',
+          navigateTo: 'finance', sound: true, vibrate: true, snoozeable: true,
+        });
+        this._addHistory({ title: s.name + ' bill', type: 'finance', time: now.toISOString(), action: 'fired' });
+      }
+    });
+  },
+
+  /* ── OVERDUE TASKS ────────────────────────────────────── */
+  _checkOverdueTasks(now) {
+    const today = APP.today();
+    const hm = now.getHours() * 60 + now.getMinutes();
+    const overdue = APP.state.tasks.tasks.filter(t => {
+      if (t.done || t.date > today) return false;
+      if (t.date < today) return true;
+      if (!t.due) return false;
+      const [th, tm] = t.due.split(':').map(Number);
+      return hm > th * 60 + tm + 5;
+    });
+    this._missedTasks = overdue;
+    if (overdue.length > 0) {
+      const banner = document.getElementById('overdue-banner');
+      const bannerText = document.getElementById('overdue-banner-text');
+      const bannerSub = document.getElementById('overdue-banner-sub');
+      if (banner) {
+        banner.style.display = 'block';
+        if (bannerText) bannerText.textContent = `${overdue.length} overdue task${overdue.length > 1 ? 's' : ''}!`;
+        if (bannerSub) bannerSub.textContent = overdue.map(t => t.title).slice(0,2).join(', ') + (overdue.length > 2 ? '...' : '');
+      }
+      // Mark overdue tasks in task list with red border
+      this._markOverdueTasks(overdue);
+      // Fire notification for newly overdue tasks
+      overdue.forEach(t => {
+        const key = `overdue_${t.id}_${today}`;
+        if (!this._firedToday(key)) {
+          this._markFiredToday(key);
+          this._fire({
+            id: key, title: `🚨 Overdue: ${t.title}`,
+            body: t.due ? `Was due at ${t.due}` : `From ${t.date}`,
+            emoji: '🚨', type: 'task', priority: 'urgent',
+            navigateTo: 'tasks', sound: true, vibrate: true, snoozeable: true,
+          });
+          this._addHistory({ title: t.title, type: 'overdue-task', time: now.toISOString(), action: 'missed' });
+          // Productivity penalty
+          if (!t._penaltyApplied) {
+            t._penaltyApplied = true;
+            APP.state.habits.xp = Math.max(0, (APP.state.habits.xp || 0) - 3);
+            APP.save();
+          }
+        }
+      });
+    } else {
+      const banner = document.getElementById('overdue-banner');
+      if (banner) banner.style.display = 'none';
+    }
+  },
+
+  /* ── HABIT REMINDER (evening if incomplete) ──────────── */
+  _checkHabitReminder(now) {
+    const h = now.getHours();
+    if (h !== 20) return; // 8pm check
+    const t = APP.today();
+    const log = APP.state.habits.log[t] || [];
+    const habits = APP.state.habits.list || [];
+    const undone = habits.filter(hab => !log.find(l => l.id === hab.id && l.done));
+    if (undone.length > 0) {
+      const key = `habits_evening_${t}`;
+      if (!this._firedToday(key)) {
+        this._markFiredToday(key);
+        this._fire({
+          id: key, title: `🔥 ${undone.length} habits remaining today`,
+          body: undone.map(h => h.emoji + ' ' + h.name).join(', '),
+          emoji: '🔥', type: 'habit', priority: 'normal',
+          navigateTo: 'habits', sound: true, vibrate: false, snoozeable: true,
+        });
+        this._addHistory({ title: 'Habit reminder', type: 'habit', time: now.toISOString(), action: 'fired' });
+      }
+    }
+  },
+
+  /* ── GROCERY ALERTS ───────────────────────────────────── */
+  _checkGroceryAlerts(now) {
+    const h = now.getHours();
+    if (h !== 9) return; // 9am daily
+    const low = APP.state.grocery.items.filter(i => i.stock === 'low');
+    const expired = APP.state.grocery.items.filter(i => i.expiry && i.expiry <= APP.today());
+    if (low.length + expired.length > 0) {
+      const key = `grocery_morning_${APP.today()}`;
+      if (!this._firedToday(key)) {
+        this._markFiredToday(key);
+        const parts = [];
+        if (low.length) parts.push(`${low.length} items low`);
+        if (expired.length) parts.push(`${expired.length} may be expired`);
+        this._fire({
+          id: key, title: `🛒 Pantry Alert`,
+          body: parts.join(' · ') + ': ' + low.concat(expired).map(i => i.name).slice(0, 4).join(', '),
+          emoji: '🛒', type: 'grocery', priority: 'normal',
+          navigateTo: 'grocery', sound: false, vibrate: false, snoozeable: false,
+        });
+        this._addHistory({ title: 'Grocery alert', type: 'grocery', time: now.toISOString(), action: 'fired' });
+      }
+    }
+  },
+
+  /* ── FIRE ALARM ───────────────────────────────────────── */
+  _fire(alarm) {
+    this._currentAlarm = alarm;
+    this._navigateTo = alarm.navigateTo || null;
+    // Play sound
+    if (alarm.sound) this._playAlarmSound(alarm.priority);
+    // Vibrate
+    if (alarm.vibrate && navigator.vibrate) {
+      const pattern = alarm.priority === 'urgent' ? [300,100,300,100,300,100,500] : alarm.priority === 'high' ? [200,100,200,100,200] : [100,50,100];
+      navigator.vibrate(pattern);
+      if (alarm.priority === 'urgent') {
+        this._vibLoop = setInterval(() => navigator.vibrate(pattern), 3000);
+      }
+    }
+    // System notification
+    this._sendNativeNotification(alarm);
+    // Show fullscreen modal
+    this._showModal(alarm);
+  },
+
+  /* ── SOUND ENGINE ─────────────────────────────────────── */
+  _playAlarmSound(priority = 'normal') {
+    try {
+      if (!this._audioCtx || this._audioCtx.state === 'closed') {
+        this._audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (this._audioCtx.state === 'suspended') this._audioCtx.resume();
+
+      const patterns = {
+        urgent: [[880,0.15],[0,0.05],[880,0.15],[0,0.05],[1100,0.3],[0,0.1],[880,0.15],[0,0.05],[880,0.15],[0,0.05],[1100,0.5]],
+        high: [[660,0.15],[0,0.05],[660,0.15],[0,0.05],[880,0.4]],
+        normal: [[440,0.1],[0,0.05],[550,0.1],[0,0.05],[660,0.3]],
+        water: [[523,0.08],[659,0.08],[784,0.2]],
+        medicine: [[440,0.1],[554,0.1],[659,0.1],[880,0.3]],
+      };
+
+      const pattern = patterns[priority] || patterns.normal;
+      let time = this._audioCtx.currentTime;
+      pattern.forEach(([freq, dur]) => {
+        if (freq === 0) { time += dur; return; }
+        const osc = this._audioCtx.createOscillator();
+        const gain = this._audioCtx.createGain();
+        osc.connect(gain); gain.connect(this._audioCtx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, time);
+        gain.gain.setValueAtTime(0.001, time);
+        gain.gain.exponentialRampToValueAtTime(0.4, time + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, time + dur - 0.02);
+        osc.start(time); osc.stop(time + dur);
+        time += dur;
+      });
+
+      if (priority === 'urgent') {
+        this._soundLoop = setTimeout(() => this._playAlarmSound(priority), (time - this._audioCtx.currentTime + 0.5) * 1000);
+      }
+    } catch(e) { console.warn('Audio error:', e); }
+  },
+
+  /* ── STOP SOUND ───────────────────────────────────────── */
+  _stopSound() {
+    if (this._soundLoop) { clearTimeout(this._soundLoop); this._soundLoop = null; }
+    if (this._vibLoop) { clearInterval(this._vibLoop); this._vibLoop = null; }
+    if (navigator.vibrate) navigator.vibrate(0);
+    try { if (this._audioCtx) this._audioCtx.close(); this._audioCtx = null; } catch(e) {}
+  },
+
+  /* ── NATIVE NOTIFICATION ──────────────────────────────── */
+  _sendNativeNotification(alarm) {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    try {
+      const n = new Notification(alarm.title, {
+        body: alarm.body, icon: alarm.emoji,
+        vibrate: alarm.vibrate ? [200, 100, 200] : [],
+        requireInteraction: alarm.priority === 'urgent',
+        tag: alarm.id,
+        badge: '⚡',
+        silent: !alarm.sound,
+      });
+      n.onclick = () => { window.focus(); Nav.go(alarm.navigateTo || 'dashboard'); n.close(); };
+    } catch(e) {}
+    // Also try via service worker
+    if (this._swReg) {
+      try {
+        navigator.serviceWorker.ready.then(reg => {
+          reg.active?.postMessage({ type: 'ALARM', title: alarm.title, body: alarm.body, tag: alarm.id });
+        });
+      } catch(e) {}
+    }
+  },
+
+  /* ── SHOW MODAL ───────────────────────────────────────── */
+  _showModal(alarm) {
+    const overlay = document.getElementById('alarm-overlay');
+    if (!overlay) return;
+    document.getElementById('alarm-emoji').textContent = alarm.emoji || '🔔';
+    document.getElementById('alarm-title').textContent = alarm.title;
+    document.getElementById('alarm-body').textContent = alarm.body || '';
+    document.getElementById('alarm-time').textContent = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+    const chip = document.getElementById('alarm-type-chip');
+    chip.textContent = alarm.type?.toUpperCase() || 'REMINDER';
+    const chipColors = {
+      medicine: '#ef5350', water: '#4fc3f7', task: '#ffb74d',
+      meeting: '#7c6ff7', urgent: '#ef5350', finance: '#66bb6a',
+      overdue: '#ef5350', habit: '#ff6b35', grocery: '#66bb6a',
+      wakeup: '#ffb74d', workout: '#4fc3f7',
+    };
+    const col = chipColors[alarm.priority === 'urgent' ? 'urgent' : alarm.type] || '#7c6ff7';
+    chip.style.background = col + '22';
+    chip.style.color = col;
+    const urgencyBar = document.getElementById('alarm-urgency-bar');
+    urgencyBar.style.background = col;
+    if (alarm.priority === 'urgent') {
+      urgencyBar.style.animation = 'alarmPulse 0.8s ease infinite';
+      document.getElementById('alarm-card').style.animation = 'alarmPop 0.5s cubic-bezier(0.34,1.56,0.64,1), alarmShake 0.5s ease 0.6s';
+    }
+    const snoozeRow = document.getElementById('alarm-snooze-row');
+    if (snoozeRow) snoozeRow.style.display = alarm.snoozeable === false ? 'none' : 'flex';
+    overlay.classList.add('open');
+    overlay.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  },
+
+  /* ── SNOOZE ───────────────────────────────────────────── */
+  snooze(minutes) {
+    this._stopSound();
+    const overlay = document.getElementById('alarm-overlay');
+    if (overlay) { overlay.classList.remove('open'); overlay.style.display = 'none'; }
+    document.body.style.overflow = '';
+    if (this._currentAlarm) {
+      const snoozeAt = new Date(Date.now() + minutes * 60000);
+      const rem = {
+        id: 'snooze_' + Date.now(), title: '⏱ Snoozed: ' + this._currentAlarm.title,
+        body: this._currentAlarm.body, type: this._currentAlarm.type || 'general',
+        fireAt: snoozeAt.toISOString(), priority: this._currentAlarm.priority || 'normal',
+        sound: this._currentAlarm.sound, vibrate: this._currentAlarm.vibrate,
+        recur: 'none', dismissed: false, fired: false,
+      };
+      if (!APP.state.alarmSettings) APP.state.alarmSettings = { reminders: [], history: [], firedToday: {} };
+      if (!APP.state.alarmSettings.reminders) APP.state.alarmSettings.reminders = [];
+      APP.state.alarmSettings.reminders.push(rem);
+      APP.save();
+      this._addHistory({ title: this._currentAlarm.title, type: this._currentAlarm.type, time: new Date().toISOString(), action: `snoozed ${minutes}m` });
+      UI.toast(`⏱ Snoozed for ${minutes} min`, 'info', 2500);
+    }
+    this._currentAlarm = null;
+  },
+
+  /* ── DISMISS ──────────────────────────────────────────── */
+  dismiss() {
+    this._stopSound();
+    const overlay = document.getElementById('alarm-overlay');
+    if (overlay) { overlay.classList.remove('open'); overlay.style.display = 'none'; }
+    document.body.style.overflow = '';
+    if (this._currentAlarm) {
+      this._addHistory({ title: this._currentAlarm.title, type: this._currentAlarm.type, time: new Date().toISOString(), action: 'dismissed' });
+    }
+    this._currentAlarm = null;
+    this._navigateTo = null;
+  },
+
+  /* ── DISMISS AND NAVIGATE ─────────────────────────────── */
+  dismissAndNavigate() {
+    const nav = this._navigateTo;
+    this.dismiss();
+    if (nav) Nav.go(nav);
+  },
+
+  /* ── RECURRING NEXT SCHEDULE ──────────────────────────── */
+  _scheduleNextRecur(r, now) {
+    let next = new Date(r.fireAt);
+    switch(r.recur) {
+      case 'daily': next.setDate(next.getDate() + 1); break;
+      case 'weekdays':
+        do { next.setDate(next.getDate() + 1); } while ([0, 6].includes(next.getDay())); break;
+      case 'weekends':
+        do { next.setDate(next.getDate() + 1); } while (![0, 6].includes(next.getDay())); break;
+      case 'weekly': next.setDate(next.getDate() + 7); break;
+      case 'monthly': next.setMonth(next.getMonth() + 1); break;
+      case 'custom': next = new Date(now.getTime() + (r.customInterval || 60) * 60000); break;
+      default: return;
+    }
+    const newRem = { ...r, id: 'recur_' + Date.now(), fireAt: next.toISOString(), fired: false, dismissed: false };
+    delete newRem.firedAt;
+    APP.state.alarmSettings.reminders.push(newRem);
+    APP.save();
+  },
+
+  /* ── MARK OVERDUE IN UI ───────────────────────────────── */
+  _markOverdueTasks(overdueTasks) {
+    const ids = new Set(overdueTasks.map(t => t.id));
+    document.querySelectorAll('.li[data-task-id]').forEach(el => {
+      const id = parseInt(el.dataset.taskId);
+      el.classList.toggle('overdue-task', ids.has(id));
+    });
+  },
+
+  /* ── SHOW OVERDUE PANEL ───────────────────────────────── */
+  showOverdue() {
+    Nav.go('tasks');
+    if (this._missedTasks.length > 0) {
+      setTimeout(() => UI.toast(`🚨 ${this._missedTasks.length} overdue tasks need attention`, 'error', 4000), 300);
+    }
+    document.getElementById('overdue-banner').style.display = 'none';
+  },
+
+  /* ── MORNING BRIEFING ─────────────────────────────────── */
+  _checkMorningBriefing() {
+    const h = new Date().getHours();
+    const key = `morning_briefing_${APP.today()}`;
+    if (h >= 6 && h < 10 && !this._firedToday(key) && APP.state.onboarded) {
+      this._markFiredToday(key);
+      setTimeout(() => this._showMorningBriefing(), 2000);
+    }
+  },
+
+  _showMorningBriefing() {
+    const s = APP.state;
+    const t = APP.today();
+    const tasks = s.tasks.tasks.filter(x => x.date === t);
+    const meds = s.health.medicines.filter(m => m.freq === 'daily' || m.freq === 'morning');
+    const subs = s.finance.subscriptions.filter(sub => {
+      const today = new Date().getDate();
+      return Math.abs(sub.due - today) <= 2;
+    });
+    const m = new Date().toISOString().slice(0, 7);
+    const exp = s.finance.transactions.filter(x => x.type === 'expense' && x.date?.startsWith(m)).reduce((a, x) => a + x.amount, 0);
+    const bud = s.user.budget || 50000;
+
+    const now = new Date();
+    const h = now.getHours();
+    const greeting = h < 10 ? 'Good Morning' : 'Hello';
+    const greetEl = document.getElementById('briefing-greeting');
+    const dateEl = document.getElementById('briefing-date');
+    const contentEl = document.getElementById('briefing-content');
+    if (greetEl) greetEl.textContent = `${greeting}, ${s.user.name || 'there'}! ☀️`;
+    if (dateEl) dateEl.textContent = now.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    if (contentEl) {
+      let html = '';
+      html += `<div style="margin-bottom:12px;padding:10px;background:rgba(124,111,247,0.08);border-radius:10px">📊 <strong>Life Score Yesterday:</strong> ${LifeScore.calc().total}%</div>`;
+      if (tasks.length) html += `<div style="margin-bottom:8px">✅ <strong>${tasks.length} tasks</strong> scheduled today (${tasks.filter(t=>t.priority==='High').length} high priority)</div>`;
+      if (meds.length) html += `<div style="margin-bottom:8px">💊 <strong>Medicines:</strong> ${meds.map(m => m.name + ' at ' + m.time).join(', ')}</div>`;
+      if (subs.length) html += `<div style="margin-bottom:8px">💰 <strong>Bills due:</strong> ${subs.map(s => s.name + ' (' + APP.fc(s.amount) + ')').join(', ')}</div>`;
+      html += `<div style="margin-bottom:8px">💰 <strong>Budget used:</strong> ${Math.round(exp / bud * 100)}% (${APP.fc(exp)} of ${APP.fc(bud)})</div>`;
+      html += `<div style="margin-bottom:8px">💧 <strong>Water goal:</strong> ${s.user.waterGoal} glasses today</div>`;
+      const low = s.grocery.items.filter(i => i.stock === 'low');
+      if (low.length) html += `<div style="margin-bottom:8px">🛒 <strong>Low stock:</strong> ${low.map(i => i.name).join(', ')}</div>`;
+      html += `<div style="margin-top:12px;font-size:12px;color:var(--c-text3)">💡 Have a productive day!</div>`;
+      contentEl.innerHTML = html;
+    }
+    const overlay = document.getElementById('morning-briefing-overlay');
+    if (overlay) overlay.style.display = 'flex';
+  },
+
+  /* ── REMINDERS PAGE ───────────────────────────────────── */
+  _injectRemindersNav() {
+    // Add "Reminders" as a quick action in settings or dashboard
+    // We inject a reminder button into the dashboard header area
+    setTimeout(() => {
+      const phActions = document.querySelectorAll('.ph-actions');
+      phActions.forEach(ph => {
+        if (!ph.querySelector('.alarm-btn')) {
+          const btn = document.createElement('button');
+          btn.className = 'btn-icon btn alarm-btn';
+          btn.title = 'Reminders';
+          btn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>';
+          btn.onclick = () => Alarm.openRemindersPanel();
+          ph.insertBefore(btn, ph.firstChild);
+        }
+      });
+    }, 1000);
+  },
+
+  /* ── REMINDERS PANEL ──────────────────────────────────── */
+  openRemindersPanel() {
+    this.renderRemindersPage();
+    UI.openModal('add-reminder-modal');
+  },
+
+  openHistory() {
+    this.renderHistory();
+    UI.openModal('reminder-history-modal');
+  },
+
+  /* ── RENDER HISTORY ───────────────────────────────────── */
+  renderHistory() {
+    const history = (APP.state.alarmSettings?.history || []).slice(-50).reverse();
+    const el = document.getElementById('reminder-history-list');
+    if (!el) return;
+    if (!history.length) {
+      el.innerHTML = '<div class="empty-state" style="padding:20px"><span class="empty-icon">🔔</span><div class="empty-text">No reminder history yet</div></div>';
+      return;
+    }
+    const actionEmoji = { fired: '🔔', dismissed: '✅', 'snoozed 5m': '⏱', 'snoozed 15m': '⏱', 'snoozed 30m': '⏱', 'snoozed 60m': '⏱', missed: '❌' };
+    el.innerHTML = history.map(h => `
+      <div class="reminder-item ${h.action === 'missed' ? 'rem-fired' : ''}">
+        <div style="font-size:18px">${actionEmoji[h.action] || '🔔'}</div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600">${UI._esc(h.title)}</div>
+          <div style="font-size:11px;color:var(--c-text2)">${h.type} · ${h.action}</div>
+        </div>
+        <div style="font-size:10px;color:var(--c-text3)">${new Date(h.time).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</div>
+      </div>`).join('');
+  },
+
+  /* ── SUBMIT REMINDER ──────────────────────────────────── */
+  submitReminder() {
+    const title = document.getElementById('rem-title')?.value?.trim();
+    const body = document.getElementById('rem-body')?.value?.trim() || '';
+    const date = document.getElementById('rem-date')?.value;
+    const time = document.getElementById('rem-time')?.value;
+    const type = document.getElementById('rem-type')?.value || 'general';
+    const recur = document.getElementById('rem-recur')?.value || 'none';
+    const priority = document.getElementById('rem-priority')?.value || 'normal';
+    const sound = document.getElementById('rem-sound')?.checked !== false;
+    const vibrate = document.getElementById('rem-vibrate')?.checked !== false;
+    const customInterval = parseInt(document.getElementById('rem-custom-interval')?.value) || 60;
+    if (!title) return UI.toast('Enter a reminder title', 'error');
+    if (!date || !time) return UI.toast('Please set a date and time', 'error');
+    if (!APP.state.alarmSettings) APP.state.alarmSettings = { reminders: [], history: [], firedToday: {} };
+    if (!APP.state.alarmSettings.reminders) APP.state.alarmSettings.reminders = [];
+    const fireAt = new Date(`${date}T${time}:00`);
+    if (fireAt <= new Date() && recur === 'none') return UI.toast('Time must be in the future', 'error');
+    const rem = {
+      id: 'rem_' + Date.now(), title, body, type, fireAt: fireAt.toISOString(),
+      recur, customInterval, priority, sound, vibrate, dismissed: false, fired: false,
+    };
+    APP.state.alarmSettings.reminders.push(rem);
+    APP.save();
+    UI.closeModal('add-reminder-modal');
+    // Reset form
+    ['rem-title','rem-body','rem-date','rem-time'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+    UI.toast(`🔔 Reminder set for ${date} at ${time}`, 'success', 3000);
+    this._addHistory({ title, type, time: new Date().toISOString(), action: 'scheduled' });
+  },
+
+  /* ── HELPERS ──────────────────────────────────────────── */
+  _firedToday(key) {
+    if (!APP.state.alarmSettings) return false;
+    const ft = APP.state.alarmSettings.firedToday || {};
+    const entry = ft[key];
+    if (!entry) return false;
+    return entry.date === APP.today();
+  },
+
+  _markFiredToday(key) {
+    if (!APP.state.alarmSettings) APP.state.alarmSettings = { reminders: [], history: [], firedToday: {} };
+    if (!APP.state.alarmSettings.firedToday) APP.state.alarmSettings.firedToday = {};
+    APP.state.alarmSettings.firedToday[key] = { date: APP.today() };
+    // Prune old entries (keep only today's)
+    const ft = APP.state.alarmSettings.firedToday;
+    const today = APP.today();
+    Object.keys(ft).forEach(k => { if (ft[k].date !== today) delete ft[k]; });
+    APP.save();
+  },
+
+  _addHistory(entry) {
+    if (!APP.state.alarmSettings) APP.state.alarmSettings = { reminders: [], history: [], firedToday: {} };
+    if (!APP.state.alarmSettings.history) APP.state.alarmSettings.history = [];
+    APP.state.alarmSettings.history.push(entry);
+    // Keep last 100 entries
+    if (APP.state.alarmSettings.history.length > 100) {
+      APP.state.alarmSettings.history = APP.state.alarmSettings.history.slice(-100);
+    }
+    APP.save();
+  },
+
+  _typeEmoji(type) {
+    const m = { medicine:'💊', water:'💧', task:'✅', meeting:'📅', grocery:'🛒',
+                finance:'💰', workout:'💪', wakeup:'⏰', habit:'🔥', general:'🔔' };
+    return m[type] || '🔔';
+  },
+
+  _typeNav(type) {
+    const m = { medicine:'health', water:'health', task:'tasks', meeting:'tasks',
+                grocery:'grocery', finance:'finance', workout:'health', habit:'habits' };
+    return m[type] || 'dashboard';
+  },
+
+  /* ── DAILY SUMMARY (10pm) ─────────────────────────────── */
+  _checkDailySummary(now) {
+    const h = now.getHours();
+    if (h !== 22) return;
+    const key = `daily_summary_${APP.today()}`;
+    if (!this._firedToday(key)) {
+      this._markFiredToday(key);
+      const s = APP.state;
+      const t = APP.today();
+      const tasks = s.tasks.tasks.filter(x => x.date === t);
+      const done = tasks.filter(x => x.done).length;
+      const score = LifeScore.calc();
+      this._fire({
+        id: key, title: `🌙 Daily Summary`,
+        body: `Score: ${score.total}% · Tasks: ${done}/${tasks.length} · Water: ${s.health.water}/${s.user.waterGoal}g`,
+        emoji: '🌙', type: 'general', priority: 'normal',
+        navigateTo: 'analytics', sound: false, vibrate: false, snoozeable: false,
+      });
+    }
+  },
+
+  /* ── QUIET HOURS SETTINGS ─────────────────────────────── */
+  setQuietHours(start, end, enabled) {
+    if (!APP.state.alarmSettings) APP.state.alarmSettings = {};
+    APP.state.alarmSettings.quietHours = { start, end, enabled };
+    APP.save();
+    UI.toast(`Quiet hours ${enabled ? 'enabled: ' + start + ' – ' + end : 'disabled'}`, 'success');
+  },
+
+  /* ── DELETE REMINDER ──────────────────────────────────── */
+  deleteReminder(id) {
+    if (!APP.state.alarmSettings?.reminders) return;
+    APP.state.alarmSettings.reminders = APP.state.alarmSettings.reminders.filter(r => r.id !== id);
+    APP.save();
+    UI.toast('Reminder removed', 'info');
+  },
+};
+
+/* ── RECUR TOGGLE IN ADD REMINDER FORM ─────────────────── */
+document.addEventListener('change', e => {
+  if (e.target.id === 'rem-recur') {
+    const wrap = document.getElementById('rem-custom-interval-wrap');
+    if (wrap) wrap.style.display = e.target.value === 'custom' ? 'block' : 'none';
+  }
+});
+
+/* ── INJECT REMINDERS INTO SETTINGS PAGE ──────────────── */
+const _origSettingsRender = Settings.render.bind(Settings);
+Settings.render = function() {
+  _origSettingsRender();
+  // Add alarm/reminders section if not present
+  setTimeout(() => {
+    const settingsPage = document.getElementById('page-settings');
+    if (!settingsPage || settingsPage.querySelector('#alarm-settings-card')) return;
+    const card = document.createElement('div');
+    card.id = 'alarm-settings-card';
+    card.className = 'card mb-xl';
+    const reminders = APP.state.alarmSettings?.reminders?.filter(r => !r.fired && !r.dismissed) || [];
+    card.innerHTML = `
+      <div class="font-700 text-sm mb-lg" style="text-transform:uppercase;letter-spacing:0.5px;color:var(--c-text2)">🔔 Alarms & Reminders</div>
+      <div class="set-row">
+        <div><div class="set-label">Active Reminders</div><div class="set-sub">${reminders.length} scheduled</div></div>
+        <button class="btn btn-secondary btn-sm" onclick="UI.openModal('add-reminder-modal');document.getElementById('rem-date').value=APP.today()">+ Add</button>
+      </div>
+      <div class="set-row">
+        <div><div class="set-label">Reminder History</div><div class="set-sub">View past alerts</div></div>
+        <button class="btn btn-secondary btn-sm" onclick="Alarm.openHistory()">View</button>
+      </div>
+      <div class="set-row">
+        <div><div class="set-label">Morning Briefing</div><div class="set-sub">Daily 6-10am summary</div></div>
+        <label class="toggle"><input type="checkbox" id="set-morning-brief" ${APP.state.alarmSettings?.morningBriefing !== false ? 'checked' : ''} onchange="APP.state.alarmSettings=APP.state.alarmSettings||{};APP.state.alarmSettings.morningBriefing=this.checked;APP.save()"><div class="toggle-track"></div></label>
+      </div>
+      <div class="set-row">
+        <div><div class="set-label">Quiet Hours</div><div class="set-sub">No alarms during sleep (10pm–7am)</div></div>
+        <label class="toggle"><input type="checkbox" id="set-quiet-hours" ${APP.state.alarmSettings?.quietHours?.enabled ? 'checked' : ''} onchange="Alarm.setQuietHours('22:00','07:00',this.checked)"><div class="toggle-track"></div></label>
+      </div>
+      <div class="set-row">
+        <div><div class="set-label">Test Alarm</div><div class="set-sub">Preview alarm sound & notification</div></div>
+        <button class="btn btn-secondary btn-sm" onclick="Alarm._fire({id:'test',title:'🔔 Test Alarm',body:'Your alarm system is working!',emoji:'🔔',type:'general',priority:'normal',navigateTo:'dashboard',sound:true,vibrate:true,snoozeable:true})">Test</button>
+      </div>
+      ${reminders.length > 0 ? `<div style="margin-top:14px"><div class="text-xs text-muted font-700" style="margin-bottom:8px;text-transform:uppercase">Upcoming Reminders</div>${reminders.slice(0,5).map(r=>`<div class="li"><div style="font-size:16px">${Alarm._typeEmoji(r.type)}</div><div class="li-body"><div class="li-title">${UI._esc(r.title)}</div><div class="li-sub">${new Date(r.fireAt).toLocaleString('en-IN',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})} · ${r.recur !== 'none' ? r.recur : 'once'}</div></div><button onclick="Alarm.deleteReminder('${r.id}');Settings.render()" style="background:none;border:none;color:var(--a-red);cursor:pointer;font-size:12px">✕</button></div>`).join('')}</div>` : ''}
+    `;
+    settingsPage.appendChild(card);
+  }, 200);
+};
+
+/* ── PATCH TASK RENDER TO ADD DATA ATTRIBUTES ──────────── */
+const _origTaskRenderList = Tasks.renderList.bind(Tasks);
+Tasks.renderList = function() {
+  _origTaskRenderList();
+  // Add data-task-id to each task LI for overdue marking
+  setTimeout(() => {
+    const taskList = document.getElementById('tasks-list');
+    if (!taskList) return;
+    const tasks = APP.state.tasks.tasks.filter(t => t.date === APP.today());
+    const items = taskList.querySelectorAll('.li');
+    tasks.forEach((task, i) => {
+      if (items[i]) items[i].dataset.taskId = task.id;
+    });
+    // Re-apply overdue markers
+    const overdue = Alarm._missedTasks || [];
+    const ids = new Set(overdue.map(t => t.id));
+    items.forEach(el => {
+      const id = parseInt(el.dataset.taskId);
+      if (ids.has(id)) {
+        el.classList.add('overdue-task');
+        // Add badge if not present
+        if (!el.querySelector('.overdue-badge')) {
+          const badge = document.createElement('span');
+          badge.className = 'overdue-badge';
+          badge.textContent = 'OVERDUE';
+          el.appendChild(badge);
+        }
+      }
+    });
+  }, 50);
+};
+
+/* ── PATCH DAILY SUMMARY INTO TICK ─────────────────────── */
+const _origTick = Alarm._tick.bind(Alarm);
+Alarm._tick = function() {
+  _origTick();
+  this._checkDailySummary(new Date());
+};
+
+/* ── START ALARM ENGINE AFTER APP INIT ──────────────────── */
+const _origInitApp = initApp;
+// Override initApp to start alarm engine after initialization
+const _alarmInitOrig = initApp;
+
+/* ── BOOT ALARM ENGINE (appended to existing boot) ───────── */
+// This will be called after the existing initApp() runs
+function initAlarmEngine() {
+  // Ensure alarmSettings exists in state
+  if (!APP.state.alarmSettings) {
+    APP.state.alarmSettings = {
+      reminders: [], history: [], firedToday: {},
+      quietHours: { start: '22:00', end: '07:00', enabled: false },
+      morningBriefing: true,
+    };
+    APP.save();
+  }
+  Alarm.init();
+}
+
 </script>
+
+<!-- ============================================================
+     ALARM / REMINDER ENGINE - FULLSCREEN MODAL
+     ============================================================ -->
+<div id="alarm-overlay" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.92);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);align-items:center;justify-content:center;padding:20px">
+  <div id="alarm-card" style="background:var(--c-bg2);border:1px solid var(--c-border);border-radius:28px;padding:36px 28px;max-width:400px;width:100%;text-align:center;box-shadow:0 24px 80px rgba(0,0,0,0.7);animation:alarmPop 0.5s cubic-bezier(0.34,1.56,0.64,1)">
+    <div id="alarm-emoji" style="font-size:64px;margin-bottom:12px;animation:alarmBounce 0.6s ease-in-out infinite alternate">⏰</div>
+    <div id="alarm-type-chip" style="display:inline-block;padding:4px 12px;border-radius:99px;font-size:11px;font-weight:700;letter-spacing:0.5px;margin-bottom:14px;background:rgba(124,111,247,0.15);color:var(--a-purple)">REMINDER</div>
+    <div id="alarm-title" style="font-size:22px;font-weight:800;margin-bottom:8px;line-height:1.2">Reminder</div>
+    <div id="alarm-body" style="font-size:14px;color:var(--c-text2);margin-bottom:6px;line-height:1.5"></div>
+    <div id="alarm-time" style="font-size:12px;color:var(--c-text3);margin-bottom:24px"></div>
+    <div id="alarm-urgency-bar" style="height:4px;border-radius:99px;margin-bottom:20px;background:var(--a-purple);transition:background 0.3s"></div>
+    <!-- Snooze options -->
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;justify-content:center" id="alarm-snooze-row">
+      <button onclick="Alarm.snooze(5)" style="flex:1;min-width:80px;padding:10px 8px;border-radius:12px;background:rgba(255,183,77,0.12);border:1px solid rgba(255,183,77,0.25);color:var(--a-orange);font-weight:700;font-size:12px;cursor:pointer">⏱ 5 min</button>
+      <button onclick="Alarm.snooze(15)" style="flex:1;min-width:80px;padding:10px 8px;border-radius:12px;background:rgba(255,183,77,0.12);border:1px solid rgba(255,183,77,0.25);color:var(--a-orange);font-weight:700;font-size:12px;cursor:pointer">⏱ 15 min</button>
+      <button onclick="Alarm.snooze(30)" style="flex:1;min-width:80px;padding:10px 8px;border-radius:12px;background:rgba(255,183,77,0.12);border:1px solid rgba(255,183,77,0.25);color:var(--a-orange);font-weight:700;font-size:12px;cursor:pointer">⏱ 30 min</button>
+      <button onclick="Alarm.snooze(60)" style="flex:1;min-width:80px;padding:10px 8px;border-radius:12px;background:rgba(255,183,77,0.12);border:1px solid rgba(255,183,77,0.25);color:var(--a-orange);font-weight:700;font-size:12px;cursor:pointer">⏱ 1 hr</button>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button onclick="Alarm.dismiss()" style="flex:1;padding:14px;border-radius:14px;background:rgba(102,187,106,0.12);border:1px solid rgba(102,187,106,0.25);color:var(--a-green);font-weight:800;font-size:14px;cursor:pointer">✅ Done</button>
+      <button onclick="Alarm.dismissAndNavigate()" style="flex:1;padding:14px;border-radius:14px;background:var(--g-primary);border:none;color:#fff;font-weight:800;font-size:14px;cursor:pointer">→ Open</button>
+    </div>
+  </div>
+</div>
+
+<!-- OVERDUE TASK BANNER -->
+<div id="overdue-banner" style="display:none;position:fixed;bottom:calc(var(--nav-h)+12px);left:12px;right:12px;z-index:998;background:linear-gradient(135deg,rgba(239,83,80,0.95),rgba(240,98,146,0.95));border-radius:16px;padding:12px 16px;box-shadow:0 8px 32px rgba(239,83,80,0.4);backdrop-filter:blur(12px);cursor:pointer" onclick="Alarm.showOverdue()">
+  <div style="display:flex;align-items:center;gap:10px">
+    <span style="font-size:20px;animation:alarmBounce 0.5s ease-in-out infinite alternate">🚨</span>
+    <div style="flex:1">
+      <div style="font-size:13px;font-weight:800;color:#fff" id="overdue-banner-text">Overdue tasks detected</div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.8)" id="overdue-banner-sub">Tap to review</div>
+    </div>
+    <button onclick="event.stopPropagation();document.getElementById('overdue-banner').style.display='none'" style="background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:8px;padding:4px 8px;font-size:12px;cursor:pointer">✕</button>
+  </div>
+</div>
+
+<!-- REMINDER HISTORY MODAL -->
+<div class="modal-overlay" id="reminder-history-modal">
+  <div class="modal" style="max-height:80vh;overflow-y:auto">
+    <div class="modal-header">
+      <div class="modal-title">🔔 Reminder History</div>
+      <button class="modal-close" onclick="UI.closeModal('reminder-history-modal')">✕</button>
+    </div>
+    <div id="reminder-history-list"></div>
+  </div>
+</div>
+
+<!-- ADD REMINDER MODAL -->
+<div class="modal-overlay" id="add-reminder-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">🔔 Add Reminder</div>
+      <button class="modal-close" onclick="UI.closeModal('add-reminder-modal')">✕</button>
+    </div>
+    <div class="field"><div class="field-label">Title</div><input class="input" id="rem-title" placeholder="Reminder title..."></div>
+    <div class="field"><div class="field-label">Message (optional)</div><input class="input" id="rem-body" placeholder="Additional details..."></div>
+    <div class="input-row">
+      <div class="field"><div class="field-label">Date</div><input class="input" id="rem-date" type="date"></div>
+      <div class="field"><div class="field-label">Time</div><input class="input" id="rem-time" type="time"></div>
+    </div>
+    <div class="field"><div class="field-label">Type</div>
+      <select class="input" id="rem-type">
+        <option value="general">📌 General</option>
+        <option value="medicine">💊 Medicine</option>
+        <option value="water">💧 Water</option>
+        <option value="task">✅ Task</option>
+        <option value="meeting">📅 Meeting</option>
+        <option value="grocery">🛒 Grocery</option>
+        <option value="finance">💰 Finance/Bill</option>
+        <option value="workout">💪 Workout</option>
+        <option value="wakeup">⏰ Wake Up</option>
+      </select>
+    </div>
+    <div class="field"><div class="field-label">Recurrence</div>
+      <select class="input" id="rem-recur">
+        <option value="none">No recurrence</option>
+        <option value="daily">Daily</option>
+        <option value="weekdays">Weekdays (Mon-Fri)</option>
+        <option value="weekends">Weekends</option>
+        <option value="weekly">Weekly</option>
+        <option value="monthly">Monthly</option>
+        <option value="custom">Custom (minutes)</option>
+      </select>
+    </div>
+    <div class="field" id="rem-custom-interval-wrap" style="display:none">
+      <div class="field-label">Interval (minutes)</div>
+      <input class="input" id="rem-custom-interval" type="number" placeholder="e.g. 120" min="1">
+    </div>
+    <div class="field"><div class="field-label">Priority</div>
+      <select class="input" id="rem-priority">
+        <option value="normal">Normal</option>
+        <option value="high">🔴 High</option>
+        <option value="urgent">🚨 Urgent</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;padding:8px 0;margin-bottom:12px">
+      <label class="toggle"><input type="checkbox" id="rem-sound" checked><div class="toggle-track"></div></label>
+      <span style="font-size:13px">Sound</span>
+      <label class="toggle" style="margin-left:12px"><input type="checkbox" id="rem-vibrate" checked><div class="toggle-track"></div></label>
+      <span style="font-size:13px">Vibration</span>
+    </div>
+    <button class="btn btn-primary btn-block" onclick="Alarm.submitReminder()">Set Reminder</button>
+  </div>
+</div>
+
+<!-- MORNING BRIEFING MODAL -->
+<div id="morning-briefing-overlay" style="display:none;position:fixed;inset:0;z-index:88888;background:rgba(0,0,0,0.88);backdrop-filter:blur(14px);align-items:center;justify-content:center;padding:16px">
+  <div style="background:var(--c-bg2);border:1px solid var(--c-border);border-radius:28px;padding:28px;max-width:420px;width:100%;box-shadow:0 24px 80px rgba(0,0,0,0.6);max-height:88vh;overflow-y:auto">
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-size:48px">🌅</div>
+      <div style="font-size:22px;font-weight:800;margin-top:8px" id="briefing-greeting">Good Morning!</div>
+      <div style="font-size:13px;color:var(--c-text2);margin-top:4px" id="briefing-date"></div>
+    </div>
+    <div id="briefing-content" style="font-size:13px;color:var(--c-text2);line-height:1.7;margin-bottom:20px"></div>
+    <button class="btn btn-primary btn-block" onclick="document.getElementById('morning-briefing-overlay').style.display='none'">Start My Day 🚀</button>
+  </div>
+</div>
+
+<style>
+@keyframes alarmPop{from{transform:scale(0.7) translateY(40px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
+@keyframes alarmBounce{from{transform:scale(1) rotate(-5deg)}to{transform:scale(1.1) rotate(5deg)}}
+@keyframes alarmPulse{0%,100%{box-shadow:0 0 0 0 rgba(239,83,80,0.4)}50%{box-shadow:0 0 0 12px rgba(239,83,80,0)}}
+@keyframes alarmShake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+.overdue-task{border-left:3px solid var(--a-red)!important;background:rgba(239,83,80,0.06)!important;animation:alarmPulse 2s ease infinite}
+.overdue-badge{background:var(--a-red);color:#fff;font-size:9px;font-weight:800;padding:2px 6px;border-radius:99px;animation:alarmPulse 1.5s ease infinite}
+.reminder-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--c-border)}
+.reminder-item:last-child{border-bottom:none}
+.rem-active{border-left:3px solid var(--a-green);padding-left:8px}
+.rem-snoozed{border-left:3px solid var(--a-orange);padding-left:8px}
+.rem-fired{opacity:0.5}
+#alarm-overlay.open{display:flex!important}
+</style>
+
 </body>
 </html>
