@@ -6,8 +6,12 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0a0a12">
+<meta name="apple-mobile-web-app-title" content="LifeOS AI">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%237c6ff7'/><polygon points='55,15 25,55 50,55 45,85 75,45 50,45' fill='white'/></svg>">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%237c6ff7'/><polygon points='55,15 25,55 50,55 45,85 75,45 50,45' fill='white'/></svg>">
 <meta name="description" content="LifeOS AI — Your Complete Daily Life Management System">
-<title>LifeOS AI</title>
+<title>LifeOS AI v4 Beta</title>
 <style>
 /* ============================================================
    CSS CUSTOM PROPERTIES & DESIGN TOKENS
@@ -755,6 +759,190 @@ textarea.input{resize:vertical;min-height:72px;line-height:1.5}
   #bottom-nav{padding-bottom:max(4px,env(safe-area-inset-bottom))}
   .page{padding-left:max(var(--sp-xl),env(safe-area-inset-left));padding-right:max(var(--sp-xl),env(safe-area-inset-right))}
 }
+
+
+/* ============================================================
+   BETA POLISH v4 — ADDITIONAL STYLES
+   ============================================================ */
+
+/* Splash Screen */
+#splash-screen{
+  position:fixed;inset:0;z-index:99999;
+  background:var(--c-bg);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  transition:opacity 0.6s ease,transform 0.6s ease;
+}
+#splash-screen.hiding{opacity:0;pointer-events:none}
+.splash-logo{
+  width:80px;height:80px;border-radius:22px;
+  background:var(--g-primary);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 0 60px rgba(124,111,247,0.5);
+  animation:splashPulse 1.5s ease-in-out infinite;
+  margin-bottom:24px;
+}
+.splash-name{font-size:28px;font-weight:800;letter-spacing:-0.5px;background:var(--g-primary);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:6px}
+.splash-tag{font-size:13px;color:var(--c-text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:32px}
+.splash-bar-wrap{width:200px;height:3px;background:rgba(255,255,255,0.08);border-radius:99px;overflow:hidden;margin-bottom:16px}
+.splash-bar{height:100%;background:var(--g-primary);border-radius:99px;animation:splashLoad 2s ease forwards}
+.splash-status{font-size:12px;color:var(--c-text3);min-height:18px;transition:opacity 0.3s}
+@keyframes splashPulse{0%,100%{box-shadow:0 0 40px rgba(124,111,247,0.4)}50%{box-shadow:0 0 70px rgba(124,111,247,0.7)}}
+@keyframes splashLoad{0%{width:0%}60%{width:75%}80%{width:88%}100%{width:100%}}
+
+/* Beta chip */
+.beta-chip{
+  display:inline-flex;align-items:center;gap:3px;
+  padding:2px 7px;border-radius:99px;
+  font-size:9px;font-weight:800;letter-spacing:0.5px;text-transform:uppercase;
+  background:linear-gradient(135deg,rgba(124,111,247,0.2),rgba(79,195,247,0.1));
+  color:var(--a-purple);border:1px solid rgba(124,111,247,0.25);
+  vertical-align:middle;
+}
+
+/* Offline Banner */
+#offline-banner{
+  display:none;position:fixed;top:0;left:0;right:0;z-index:88888;
+  background:linear-gradient(135deg,rgba(255,183,77,0.97),rgba(255,152,0,0.97));
+  padding:9px 16px;text-align:center;font-size:12px;font-weight:700;color:#000;
+  box-shadow:0 2px 12px rgba(255,183,77,0.4);animation:slideDown 0.3s ease;
+}
+#offline-banner.visible{display:block}
+@keyframes slideDown{from{transform:translateY(-100%)}to{transform:none}}
+
+/* Feedback FAB */
+#feedback-fab{
+  position:fixed;left:20px;bottom:calc(var(--nav-h)+16px);z-index:250;
+  width:46px;height:46px;border-radius:50%;
+  background:rgba(124,111,247,0.15);border:1px solid rgba(124,111,247,0.3);
+  color:var(--a-purple);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:all var(--t-spring);
+  box-shadow:0 4px 16px rgba(124,111,247,0.2);
+}
+#feedback-fab:hover{background:rgba(124,111,247,0.25);transform:scale(1.08)}
+@media(min-width:769px){#feedback-fab{bottom:20px}}
+
+/* Confetti micro-animation */
+.confetti-burst{
+  position:fixed;pointer-events:none;z-index:9000;
+  top:50%;left:50%;transform:translate(-50%,-50%);
+}
+.confetti-piece{
+  position:absolute;width:8px;height:8px;border-radius:2px;
+  animation:confettiFly 0.8s ease-out forwards;
+}
+@keyframes confettiFly{
+  0%{transform:translate(0,0) rotate(0deg);opacity:1}
+  100%{transform:translate(var(--cx),var(--cy)) rotate(var(--cr));opacity:0}
+}
+
+/* Skeleton loaders */
+.skel-line{height:14px;border-radius:7px;margin-bottom:8px;background:linear-gradient(90deg,rgba(255,255,255,0.04) 25%,rgba(255,255,255,0.08) 50%,rgba(255,255,255,0.04) 75%);background-size:200% 100%;animation:skelAnim 1.5s ease infinite}
+.skel-line.short{width:60%}
+.skel-line.med{width:80%}
+.skel-circle{width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.06);flex-shrink:0;animation:skelAnim 1.5s ease infinite}
+
+/* Success ring animation */
+@keyframes successRing{0%{transform:scale(0.5);opacity:0}60%{transform:scale(1.15);opacity:1}100%{transform:scale(1);opacity:1}}
+.success-ring{animation:successRing 0.4s cubic-bezier(0.34,1.56,0.64,1)}
+
+/* Streak celebrate */
+@keyframes streakPop{0%{transform:scale(1)}30%{transform:scale(1.3) rotate(-5deg)}60%{transform:scale(0.95) rotate(3deg)}100%{transform:scale(1) rotate(0deg)}}
+.streak-pop{animation:streakPop 0.5s ease}
+
+/* Install prompt */
+#install-prompt{
+  display:none;position:fixed;bottom:calc(var(--nav-h)+16px);
+  left:50%;transform:translateX(-50%);z-index:300;
+  background:var(--c-bg2);border:1px solid var(--c-border);
+  border-radius:var(--r-xl);padding:16px 20px;
+  width:calc(100% - 32px);max-width:400px;
+  box-shadow:var(--shadow-lg);animation:slideUp 0.4s cubic-bezier(0.34,1.56,0.64,1);
+}
+#install-prompt.visible{display:block}
+@media(min-width:769px){#install-prompt{bottom:20px}}
+
+/* Error fallback */
+#error-fallback{
+  display:none;position:fixed;inset:0;z-index:999999;
+  background:rgba(0,0,0,0.9);backdrop-filter:blur(12px);
+  align-items:center;justify-content:center;padding:20px;
+}
+#error-fallback.visible{display:flex}
+
+/* Quick guide highlight */
+.guide-highlight{
+  position:relative;z-index:1000;
+  box-shadow:0 0 0 4px rgba(124,111,247,0.4),0 0 0 8px rgba(124,111,247,0.1);
+  border-radius:var(--r-lg);transition:all 0.3s;
+}
+
+/* Storage health bar */
+.storage-bar{height:8px;border-radius:99px;overflow:hidden;background:rgba(255,255,255,0.07);margin:6px 0}
+.storage-fill{height:100%;border-radius:99px;transition:width 0.8s ease}
+
+/* Beta tools panel */
+#beta-tools-panel{
+  background:var(--c-bg2);border:1px solid rgba(124,111,247,0.2);
+  border-radius:var(--r-xl);padding:var(--sp-xl);margin-top:var(--sp-xl);
+  border-left:3px solid var(--a-purple);
+}
+
+/* Empty state SVG illustrations */
+.empty-illus{
+  width:80px;height:80px;margin:0 auto 16px;
+  display:flex;align-items:center;justify-content:center;
+  border-radius:50%;background:rgba(124,111,247,0.08);
+  font-size:36px;
+}
+
+/* Daily summary card */
+#daily-summary-modal .modal{
+  background:linear-gradient(135deg,var(--c-bg2),rgba(124,111,247,0.04));
+}
+
+/* Performance indicator */
+.perf-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:5px}
+.perf-good{background:#66bb6a}.perf-warn{background:#ffb74d}.perf-bad{background:#ef5350}
+
+/* Mobile keyboard fix */
+@supports(padding-bottom: env(keyboard-inset-height)){
+  .modal-overlay.open{padding-bottom:calc(16px + env(keyboard-inset-height, 0px))}
+}
+/* Safe-area refinements */
+@supports(padding:max(0px)){
+  #fab{bottom:max(calc(var(--nav-h)+16px),calc(env(safe-area-inset-bottom)+calc(var(--nav-h)+10px)))}
+  #feedback-fab{bottom:max(calc(var(--nav-h)+16px),calc(env(safe-area-inset-bottom)+calc(var(--nav-h)+10px)))}
+  #offline-banner{padding-top:max(9px,calc(env(safe-area-inset-top)+4px))}
+}
+@media(min-width:769px){
+  #fab{bottom:20px}
+  #feedback-fab{bottom:20px}
+}
+
+/* Backup reminder */
+#backup-reminder{
+  display:none;position:fixed;top:60px;right:16px;z-index:400;
+  background:var(--c-bg2);border:1px solid rgba(124,111,247,0.2);
+  border-radius:var(--r-xl);padding:14px 18px;max-width:300px;
+  box-shadow:var(--shadow-md);animation:toastIn 0.3s ease;
+}
+#backup-reminder.visible{display:block}
+
+
+@keyframes alarmPop{from{transform:scale(0.7) translateY(40px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
+@keyframes alarmBounce{from{transform:scale(1) rotate(-5deg)}to{transform:scale(1.1) rotate(5deg)}}
+@keyframes alarmPulse{0%,100%{box-shadow:0 0 0 0 rgba(239,83,80,0.4)}50%{box-shadow:0 0 0 12px rgba(239,83,80,0)}}
+@keyframes alarmShake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+.overdue-task{border-left:3px solid var(--a-red)!important;background:rgba(239,83,80,0.06)!important;animation:alarmPulse 2s ease infinite}
+.overdue-badge{background:var(--a-red);color:#fff;font-size:9px;font-weight:800;padding:2px 6px;border-radius:99px;animation:alarmPulse 1.5s ease infinite}
+.reminder-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--c-border)}
+.reminder-item:last-child{border-bottom:none}
+.rem-active{border-left:3px solid var(--a-green);padding-left:8px}
+.rem-snoozed{border-left:3px solid var(--a-orange);padding-left:8px}
+.rem-fired{opacity:0.5}
+#alarm-overlay.open{display:flex!important}
+
 </style>
 </head>
 <body>
@@ -973,7 +1161,7 @@ textarea.input{resize:vertical;min-height:72px;line-height:1.5}
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
       </div>
       <div>
-        <div class="sb-logo-name">LifeOS AI</div>
+        <div class="sb-logo-name">LifeOS AI <span class="beta-chip">Beta</span></div>
         <div class="sb-logo-tag">Life Management System</div>
       </div>
     </div>
@@ -1500,7 +1688,7 @@ textarea.input{resize:vertical;min-height:72px;line-height:1.5}
       </div>
       <div class="card">
         <div class="font-700 text-sm mb-lg" style="text-transform:uppercase;letter-spacing:0.5px;color:var(--c-text2)">About</div>
-        <div class="set-row"><div class="set-label">Version</div><span class="text-muted text-xs">3.0.0 Production</span></div>
+        <div class="set-row"><div class="set-label">Version</div><span class="text-muted text-xs">4.0 Beta</span></div>
         <div class="set-row"><div class="set-label">Storage Used</div><span class="text-muted text-xs" id="set-storage">Calculating…</span></div>
         <div class="set-row"><div class="set-label">Offline Status</div><span class="chip chip-green">✅ Active</span></div>
         <div class="set-row"><div class="set-label">Data Privacy</div><span class="chip chip-blue">100% Local</span></div>
@@ -2579,9 +2767,13 @@ function initApp(){
 /* ============================================================
    BOOT
    ============================================================ */
-APP.load();
-if(!APP.state.onboarded){Onboard.buildDots();document.getElementById('onboarding').classList.add('open');}
-else{seedData();initApp();initAlarmEngine();}
+
+// Define placeholder for delayed init
+window._pendingInit = function() {
+  if (typeof initAppWithSplash === 'function') {
+    initAppWithSplash();
+  }
+};
 
 
 /* ============================================================
@@ -3384,6 +3576,763 @@ function initAlarmEngine() {
   Alarm.init();
 }
 
+
+
+/* ============================================================
+   BETA POLISH ENGINE v4.0
+   ============================================================ */
+const BETA_VERSION = '4.0 Beta';
+const BETA_BUILD   = '2026.05.23';
+const BETA_CHANNEL = 'Closed Beta';
+
+const Beta = {
+  _fbMood: 0,
+  _fbType: 'bug',
+  _deferredInstall: null,
+  _installPromptShown: false,
+
+  /* ── SPLASH ─────────────────────────────────────────── */
+  runSplash(onDone) {
+    const splash = document.getElementById('splash-screen');
+    const statusEl = document.getElementById('splash-status');
+    if (!splash) { onDone(); return; }
+    const steps = [
+      [200,  'Loading your data…'],
+      [600,  'Applying preferences…'],
+      [1000, 'Syncing reminders…'],
+      [1500, 'Preparing dashboard…'],
+      [2000, 'Almost ready…'],
+    ];
+    steps.forEach(([delay, msg]) => {
+      setTimeout(() => { if (statusEl) statusEl.textContent = msg; }, delay);
+    });
+    setTimeout(() => {
+      if (splash) {
+        splash.classList.add('hiding');
+        setTimeout(() => { splash.style.display = 'none'; onDone(); }, 650);
+      } else { onDone(); }
+    }, 2400);
+  },
+
+  resetSplash() {
+    const splash = document.getElementById('splash-screen');
+    if (!splash) return;
+    splash.classList.remove('hiding');
+    splash.style.display = 'flex';
+    UI.closeModal('beta-tools-modal');
+    setTimeout(() => this.runSplash(() => {}), 100);
+  },
+
+  /* ── OFFLINE DETECTION ──────────────────────────────── */
+  initOfflineDetection() {
+    const banner = document.getElementById('offline-banner');
+    const update = () => {
+      if (banner) banner.classList.toggle('visible', !navigator.onLine);
+    };
+    window.addEventListener('online', () => { update(); UI.toast('✅ Back online', 'success', 2000); });
+    window.addEventListener('offline', () => { update(); UI.toast('📡 You are offline — data is stored locally', 'warning', 4000); });
+    update();
+  },
+
+  _triggerOffline() {
+    const banner = document.getElementById('offline-banner');
+    if (banner) { banner.classList.add('visible'); setTimeout(() => banner.classList.remove('visible'), 5000); }
+    UI.toast('📡 Simulating offline mode for 5s', 'warning', 5000);
+    UI.closeModal('beta-tools-modal');
+  },
+
+  /* ── PWA INSTALL ────────────────────────────────────── */
+  initInstallPrompt() {
+    window.addEventListener('beforeinstallprompt', e => {
+      e.preventDefault();
+      this._deferredInstall = e;
+      if (!this._installPromptShown && APP.state.onboarded) {
+        setTimeout(() => {
+          const p = document.getElementById('install-prompt');
+          if (p) { p.classList.add('visible'); this._installPromptShown = true; }
+        }, 8000);
+      }
+    });
+    window.addEventListener('appinstalled', () => {
+      const p = document.getElementById('install-prompt');
+      if (p) p.classList.remove('visible');
+      UI.toast('🎉 LifeOS AI installed!', 'success');
+    });
+  },
+
+  async installApp() {
+    if (!this._deferredInstall) {
+      UI.toast('To install: use your browser\'s "Add to Home Screen" option', 'info', 5000);
+      document.getElementById('install-prompt')?.classList.remove('visible');
+      return;
+    }
+    this._deferredInstall.prompt();
+    const { outcome } = await this._deferredInstall.userChoice;
+    if (outcome === 'accepted') UI.toast('🎉 Installing LifeOS AI…', 'success');
+    this._deferredInstall = null;
+    document.getElementById('install-prompt')?.classList.remove('visible');
+  },
+
+  /* ── FEEDBACK ───────────────────────────────────────── */
+  openFeedback() {
+    this._fbMood = 0;
+    this._fbType = 'bug';
+    document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('active'));
+    this.setFeedbackType('bug');
+    const dbg = document.getElementById('fb-debug-info');
+    if (dbg) dbg.textContent = this._getDebugInfo();
+    const fb = document.getElementById('fb-text');
+    if (fb) fb.value = '';
+    UI.openModal('feedback-modal');
+  },
+
+  setFeedbackType(type) {
+    this._fbType = type;
+    ['bug','idea','praise','other'].forEach(t => {
+      const btn = document.getElementById('fbt-' + t);
+      if (!btn) return;
+      btn.style.cssText = '';
+      btn.className = 'btn btn-secondary btn-sm flex-1';
+    });
+    const map = { bug:'rgba(239,83,80,.1),rgba(239,83,80,.2),var(--a-red)', idea:'rgba(255,183,77,.1),rgba(255,183,77,.2),var(--a-orange)', praise:'rgba(102,187,106,.1),rgba(102,187,106,.2),var(--a-green)', other:'rgba(124,111,247,.1),rgba(124,111,247,.2),var(--a-purple)' };
+    const [bg, bc, col] = map[type].split(',');
+    const btn = document.getElementById('fbt-' + type);
+    if (btn) btn.style.cssText = `background:${bg};border-color:${bc};color:${col}`;
+  },
+
+  setFbMood(n, el) {
+    this._fbMood = n;
+    document.querySelectorAll('#feedback-modal .mood-btn').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+  },
+
+  _getDebugInfo() {
+    const s = APP.state;
+    const sz = JSON.stringify(s).length;
+    return `v${BETA_VERSION} · Build ${BETA_BUILD} · ${new Date().toLocaleString('en-IN')} · Storage: ${(sz/1024).toFixed(1)}KB · Transactions: ${s.finance.transactions.length} · Tasks: ${s.tasks.tasks.length} · Habits: ${s.habits.list.length} · Reminders: ${(s.alarmSettings?.reminders||[]).length} · OS: ${navigator.userAgent.includes('iPhone')?'iOS':navigator.userAgent.includes('Android')?'Android':'Desktop'}`;
+  },
+
+  copyFeedback() {
+    const text = document.getElementById('fb-text')?.value || '';
+    const type = this._fbType;
+    const mood = ['','😢','😕','😐','😊','🤩'][this._fbMood] || '';
+    const dbg = this._getDebugInfo();
+    const report = `[LifeOS ${BETA_VERSION} Feedback]\nType: ${type} ${mood}\n\n${text}\n\n--- Debug ---\n${dbg}`;
+    navigator.clipboard?.writeText(report).then(() => UI.toast('📋 Report copied to clipboard!', 'success')).catch(() => {
+      const ta = document.createElement('textarea');
+      ta.value = report; document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); ta.remove();
+      UI.toast('📋 Copied!', 'success');
+    });
+  },
+
+  submitFeedback() {
+    const text = document.getElementById('fb-text')?.value?.trim();
+    if (!text) return UI.toast('Please describe your feedback', 'error');
+    this.copyFeedback();
+    UI.closeModal('feedback-modal');
+    UI.toast('✅ Feedback copied! Share it via WhatsApp or email. Thank you!', 'success', 5000);
+    if (!APP.state.betaFeedback) APP.state.betaFeedback = [];
+    APP.state.betaFeedback.push({ type: this._fbType, mood: this._fbMood, text, time: new Date().toISOString() });
+    APP.save();
+  },
+
+  /* ── CONFETTI ───────────────────────────────────────── */
+  showConfetti(x, y) {
+    const colors = ['#7c6ff7','#4fc3f7','#f06292','#66bb6a','#ffb74d','#ff6b35'];
+    const container = document.createElement('div');
+    container.className = 'confetti-burst';
+    if (x && y) { container.style.left = x + 'px'; container.style.top = y + 'px'; container.style.transform = 'none'; }
+    for (let i = 0; i < 18; i++) {
+      const piece = document.createElement('div');
+      piece.className = 'confetti-piece';
+      const angle = (i / 18) * Math.PI * 2;
+      const dist = 60 + Math.random() * 80;
+      piece.style.cssText = `background:${colors[i%colors.length]};--cx:${Math.cos(angle)*dist}px;--cy:${Math.sin(angle)*dist}px;--cr:${Math.random()*360}deg;animation-delay:${Math.random()*0.2}s;width:${5+Math.random()*5}px;height:${5+Math.random()*5}px`;
+      container.appendChild(piece);
+    }
+    document.body.appendChild(container);
+    setTimeout(() => container.remove(), 1200);
+  },
+
+  /* ── MICRO-INTERACTIONS ─────────────────────────────── */
+  celebrateTaskComplete(el) {
+    if (!el) return;
+    el.classList.add('success-ring');
+    this.showConfetti();
+    setTimeout(() => el.classList.remove('success-ring'), 600);
+  },
+
+  celebrateStreak(habitName) {
+    UI.toast(`🔥 ${habitName} streak extended!`, 'success', 2500);
+    this.showConfetti();
+  },
+
+  celebrateWaterGoal() {
+    this.showConfetti();
+    UI.toast('💧 Daily water goal achieved! Amazing!', 'success', 3000);
+  },
+
+  celebrateHabitAllDone() {
+    this.showConfetti();
+    UI.toast('🏆 All habits completed today! Perfect day!', 'success', 3500);
+  },
+
+  /* ── PARTIAL RESET ──────────────────────────────────── */
+  partialReset(section) {
+    const labels = { reminders:'Reminders', health:'Health Data', finance:'Finance Data', tasks:'Tasks & Notes', habits:'Habits' };
+    if (!confirm(`Reset ${labels[section]}? This cannot be undone.`)) return;
+    switch(section) {
+      case 'reminders':
+        APP.state.alarmSettings = { reminders:[], history:[], firedToday:{}, quietHours:{start:'22:00',end:'07:00',enabled:false}, morningBriefing:true };
+        break;
+      case 'health':
+        APP.state.health = { water:0, steps:0, sleep:7.5, bedtime:'23:00', waketime:'06:30', weights:[], workouts:[], medicines:[], mood:'', moodLabel:'', stress:5 };
+        break;
+      case 'finance':
+        APP.state.finance = { transactions:[], subscriptions:[] };
+        break;
+      case 'tasks':
+        APP.state.tasks = { tasks:[], notes:[] };
+        break;
+      case 'habits':
+        APP.state.habits = { list:[], xp:0, log:{} };
+        break;
+    }
+    APP.save();
+    UI.closeModal('partial-reset-modal');
+    UI.toast(`✅ ${labels[section]} reset`, 'success');
+    Nav.go(Nav.current);
+  },
+
+  confirmFullReset() {
+    UI.closeModal('partial-reset-modal');
+    if (confirm('⚠️ Full Reset: Delete ALL LifeOS data?\n\nThis permanently deletes everything and cannot be undone.\n\nExport a backup first!')) {
+      Settings.export();
+      setTimeout(() => {
+        if (confirm('Backup exported. Proceed with full reset?')) {
+          localStorage.removeItem('lifeos_v4');
+          UI.toast('Reset complete. Reloading…', 'info');
+          setTimeout(() => location.reload(), 1000);
+        }
+      }, 800);
+    }
+  },
+
+  emergencyReset() {
+    if (confirm('Emergency reset? All data will be lost.')) {
+      try { localStorage.clear(); } catch(e) {}
+      location.reload();
+    }
+  },
+
+  /* ── BACKUP REMINDER ────────────────────────────────── */
+  checkBackupReminder() {
+    const last = APP.state.lastBackup;
+    if (!last) { APP.state.lastBackup = Date.now(); APP.save(); return; }
+    const daysSince = (Date.now() - last) / 864e5;
+    if (daysSince >= 7) this.showBackupReminder();
+  },
+
+  showBackupReminder() {
+    const el = document.getElementById('backup-reminder');
+    if (el) el.classList.add('visible');
+  },
+
+  dismissBackupReminder() {
+    const el = document.getElementById('backup-reminder');
+    if (el) el.classList.remove('visible');
+    APP.state.lastBackup = Date.now();
+    APP.save();
+  },
+
+  /* ── DEMO DATA ──────────────────────────────────────── */
+  loadDemoData() {
+    const t = APP.today();
+    const past = (d) => { const dt = new Date(); dt.setDate(dt.getDate()-d); return dt.toISOString().split('T')[0]; };
+    const m = new Date().toISOString().slice(0,7);
+
+    // Mark existing data as user data, add demo flag
+    if (!APP.state._demoLoaded) {
+      // Demo transactions
+      const demoTxns = [
+        {id:9e9+1,type:'income',amount:65000,desc:'Monthly Salary',cat:'Salary',date:m+'-01',notes:'',_demo:true},
+        {id:9e9+2,type:'expense',amount:1240,desc:'Zomato Pizza Order',cat:'Food',date:past(0),notes:'',_demo:true},
+        {id:9e9+3,type:'expense',amount:340,desc:'Uber to Office',cat:'Transport',date:past(1),notes:'',_demo:true},
+        {id:9e9+4,type:'expense',amount:2800,desc:'Amazon — Headphones',cat:'Shopping',date:past(2),notes:'',_demo:true},
+        {id:9e9+5,type:'expense',amount:499,desc:'Netflix Subscription',cat:'Entertainment',date:past(3),notes:'',_demo:true},
+        {id:9e9+6,type:'expense',amount:620,desc:'Pharmacy — Vitamins',cat:'Health',date:past(4),notes:'',_demo:true},
+        {id:9e9+7,type:'expense',amount:1890,desc:'Big Basket Groceries',cat:'Groceries',date:past(5),notes:'',_demo:true},
+        {id:9e9+8,type:'expense',amount:780,desc:'Electricity Bill',cat:'Bills',date:past(6),notes:'',_demo:true},
+        {id:9e9+9,type:'expense',amount:450,desc:'Coffee & Snacks',cat:'Food',date:past(1),notes:'',_demo:true},
+        {id:9e9+10,type:'income',amount:12000,desc:'Freelance Design Work',cat:'Freelance',date:past(8),notes:'',_demo:true},
+      ];
+      APP.state.finance.transactions.push(...demoTxns);
+
+      // Demo tasks
+      const demoTasks = [
+        {id:9e9+20,title:'Review Q2 project proposal',priority:'High',done:false,due:'10:00',date:t,notes:'Send to manager before noon',_demo:true},
+        {id:9e9+21,title:'Call dentist for appointment',priority:'Medium',done:false,due:'14:00',date:t,notes:'',_demo:true},
+        {id:9e9+22,title:'Pay electricity bill',priority:'High',done:true,due:'12:00',date:t,notes:'',_demo:true},
+        {id:9e9+23,title:'30-min workout',priority:'Medium',done:false,due:'07:00',date:t,notes:'Cardio day',_demo:true},
+        {id:9e9+24,title:'Read 15 pages',priority:'Low',done:false,due:'21:00',date:t,notes:'Currently: Atomic Habits',_demo:true},
+        {id:9e9+25,title:'Weekly grocery run',priority:'Medium',done:false,due:'18:00',date:t,notes:'',_demo:true},
+      ];
+      APP.state.tasks.tasks.push(...demoTasks);
+
+      // Demo meals
+      const demoMeals = [
+        {id:9e9+30,name:'Masala Oats + Banana',type:'Breakfast',cal:380,protein:14,carbs:62,fats:8,fiber:7,date:t,_demo:true},
+        {id:9e9+31,name:'Dal Tadka + Jeera Rice',type:'Lunch',cal:540,protein:22,carbs:80,fats:11,fiber:9,date:t,_demo:true},
+        {id:9e9+32,name:'Mixed Nuts + Fruit',type:'Snack',cal:210,protein:6,carbs:22,fats:12,fiber:4,date:t,_demo:true},
+      ];
+      APP.state.food.meals.push(...demoMeals);
+
+      // Demo habits (if not already seeded)
+      if (APP.state.habits.list.length < 3) {
+        APP.state.habits.list.push(
+          {id:9e9+40,name:'Morning Walk',emoji:'🏃',goal:1,streak:9,_demo:true},
+          {id:9e9+41,name:'Gratitude Journal',emoji:'✍️',goal:1,streak:4,_demo:true},
+          {id:9e9+42,name:'No Social Media AM',emoji:'📵',goal:1,streak:3,_demo:true}
+        );
+      }
+
+      // Demo grocery items
+      const demoGroc = [
+        {id:9e9+50,name:'Almond Milk',qty:'1 litre',cat:'Dairy',stock:'low',expiry:past(-3),added:t,_demo:true},
+        {id:9e9+51,name:'Quinoa',qty:'500g',cat:'Grains',stock:'medium',expiry:'',added:t,_demo:true},
+        {id:9e9+52,name:'Spinach',qty:'200g',cat:'Vegetables',stock:'low',expiry:past(-1),added:t,_demo:true},
+      ];
+      APP.state.grocery.items.push(...demoGroc);
+
+      APP.state._demoLoaded = true;
+      APP.save();
+      UI.closeModal('demo-modal');
+      UI.toast('🎭 Demo data loaded! Explore the app.', 'success', 3000);
+      Nav.go('dashboard');
+    } else {
+      UI.toast('Demo data already loaded', 'info');
+    }
+  },
+
+  clearDemoData() {
+    APP.state.finance.transactions = APP.state.finance.transactions.filter(t => !t._demo);
+    APP.state.tasks.tasks = APP.state.tasks.tasks.filter(t => !t._demo);
+    APP.state.food.meals = APP.state.food.meals.filter(m => !m._demo);
+    APP.state.habits.list = APP.state.habits.list.filter(h => !h._demo);
+    APP.state.grocery.items = APP.state.grocery.items.filter(i => !i._demo);
+    delete APP.state._demoLoaded;
+    APP.save();
+    UI.closeModal('demo-modal');
+    UI.toast('🗑️ Demo data removed', 'info');
+    Nav.go('dashboard');
+  },
+
+  /* ── DAILY SUMMARY ──────────────────────────────────── */
+  showDailySummary() {
+    const s = APP.state;
+    const t = APP.today();
+    const tasks = s.tasks.tasks.filter(x => x.date === t);
+    const done = tasks.filter(x => x.done).length;
+    const missed = tasks.filter(x => !x.done);
+    const m = new Date().toISOString().slice(0,7);
+    const exp = s.finance.transactions.filter(x => x.type==='expense' && x.date?.startsWith(m)).reduce((a,x)=>a+x.amount,0);
+    const score = LifeScore.calc();
+    const info = LifeScore.label(score.total);
+    const habLog = s.habits.log[t] || [];
+    const habDone = habLog.filter(l=>l.done).length;
+    const maxStreak = s.habits.list.length ? Math.max(...s.habits.list.map(h=>h.streak||0)) : 0;
+
+    const el = document.getElementById('daily-summary-content');
+    if (!el) return;
+    el.innerHTML = `
+      <div style="text-align:center;padding:8px 0 20px">
+        <div style="font-size:42px;margin-bottom:8px">${info.emoji}</div>
+        <div style="font-size:30px;font-weight:800;color:${info.color}">${score.total}%</div>
+        <div style="font-size:14px;color:var(--c-text2)">${info.label} Day</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+        ${[
+          {i:'✅',l:'Tasks Done',v:`${done}/${tasks.length}`},
+          {i:'💧',l:'Water',v:`${s.health.water}/${s.user.waterGoal}g`},
+          {i:'🔥',l:'Habits',v:`${habDone}/${s.habits.list.length}`},
+          {i:'👟',l:'Steps',v:s.health.steps.toLocaleString()},
+          {i:'💰',l:'Spent Today',v:APP.fc(s.finance.transactions.filter(x=>x.type==='expense'&&x.date===t).reduce((a,x)=>a+x.amount,0))},
+          {i:'🏆',l:'Best Streak',v:`${maxStreak} days`},
+        ].map(x=>`<div style="background:var(--c-surface);border-radius:12px;padding:12px;text-align:center">
+          <div style="font-size:20px">${x.i}</div>
+          <div style="font-size:18px;font-weight:800;margin:4px 0">${x.v}</div>
+          <div style="font-size:10px;color:var(--c-text3);font-weight:700;text-transform:uppercase">${x.l}</div>
+        </div>`).join('')}
+      </div>
+      ${missed.length ? `<div style="background:rgba(239,83,80,.07);border:1px solid rgba(239,83,80,.15);border-radius:12px;padding:12px;margin-bottom:12px"><div style="font-size:12px;font-weight:700;color:var(--a-red);margin-bottom:6px">⚠️ ${missed.length} incomplete task${missed.length>1?'s':''}</div><div style="font-size:12px;color:var(--c-text2)">${missed.map(t=>t.title).slice(0,3).join(' · ')}${missed.length>3?'…':''}</div></div>`:''}
+      <div style="font-size:13px;color:var(--c-text2);line-height:1.6;padding:12px;background:rgba(124,111,247,.07);border-radius:12px">
+        ${score.total>=80?'🌟 Outstanding day! You\'re building real momentum.':score.total>=60?'👍 Solid performance today. Small improvements tomorrow!':'💪 Tomorrow is a fresh start. You\'ve got this!'}
+      </div>`;
+    UI.openModal('daily-summary-modal');
+  },
+
+  /* ── MORNING BRIEFING UPGRADE ───────────────────────── */
+  showUpgradedMorningBriefing() {
+    const s = APP.state;
+    const t = APP.today();
+    const tasks = s.tasks.tasks.filter(x => x.date === t);
+    const meds = s.health.medicines.filter(m => m.freq === 'daily' || !m.freq);
+    const subs = s.finance.subscriptions.filter(sub => { const td = new Date().getDate(); return Math.abs(sub.due-td) <= 2; });
+    const m = new Date().toISOString().slice(0,7);
+    const exp = s.finance.transactions.filter(x=>x.type==='expense'&&x.date?.startsWith(m)).reduce((a,x)=>a+x.amount,0);
+    const bud = s.user.budget||50000;
+    const score = LifeScore.calc();
+    const now = new Date();
+    const h = now.getHours();
+    const greeting = h<10?'Good morning':'Hello';
+    const weathers=['☀️ Sunny','⛅ Partly Cloudy','🌤️ Clear skies'];
+    const wx = weathers[now.getDate() % weathers.length];
+    const habLog = s.habits.log[t]||[];
+    const maxStreak = s.habits.list.length?Math.max(...s.habits.list.map(h=>h.streak||0)):0;
+
+    const greetEl = document.getElementById('briefing-greeting');
+    const dateEl = document.getElementById('briefing-date');
+    const contentEl = document.getElementById('briefing-content');
+    if (greetEl) greetEl.textContent = `${greeting}, ${s.user.name||'there'}! ☀️`;
+    if (dateEl) dateEl.textContent = now.toLocaleDateString('en-IN',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+    if (contentEl) {
+      const budLeft = bud - exp;
+      const insights = [];
+      if (s.health.sleep < 7) insights.push(`😴 You slept ${s.health.sleep}h — slightly below the ideal 7-9h.`);
+      if (maxStreak >= 5) insights.push(`🔥 You're on a ${maxStreak}-day streak — keep the momentum!`);
+      if (budLeft < bud * 0.25) insights.push(`💸 Only ${APP.fc(budLeft)} budget remaining — spend mindfully today.`);
+      if (s.health.water === 0) insights.push(`💧 Start your day with a glass of water!`);
+
+      contentEl.innerHTML = `
+        <div style="background:rgba(124,111,247,.08);border-radius:12px;padding:12px 14px;margin-bottom:14px">
+          <div style="font-size:12px;color:var(--c-text3);font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Today's Overview</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
+            <div>⭐ Score: <strong>${score.total}%</strong></div>
+            <div>🌤️ ${wx}</div>
+            <div>✅ ${tasks.length} task${tasks.length!==1?'s':''} today</div>
+            <div>💰 ${APP.fc(budLeft)} left</div>
+            <div>😴 Slept: ${s.health.sleep}h</div>
+            <div>🔥 Streak: ${maxStreak}d</div>
+          </div>
+        </div>
+        ${meds.length?`<div style="margin-bottom:10px;font-size:13px">💊 <strong>Medicines:</strong> ${meds.map(m=>`${m.name} at ${m.time}`).join(', ')}</div>`:``}
+        ${subs.length?`<div style="margin-bottom:10px;font-size:13px">📱 <strong>Bills due:</strong> ${subs.map(s=>`${s.name} (${APP.fc(s.amount)})`).join(', ')}</div>`:``}
+        ${tasks.filter(t=>t.priority==='High').length?`<div style="margin-bottom:10px;font-size:13px">🎯 <strong>Priority today:</strong> ${tasks.filter(t=>t.priority==='High').map(t=>t.title).slice(0,2).join(', ')}</div>`:``}
+        ${insights.length?`<div style="background:rgba(79,195,247,.07);border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.7;color:var(--c-text2)">${insights.join('<br>')}</div>`:''}
+        <div style="margin-top:12px;font-size:12px;color:var(--c-text3);font-style:italic;text-align:center">"Small daily wins lead to massive life transformations." 💪</div>
+      `;
+    }
+    const overlay = document.getElementById('morning-briefing-overlay');
+    if (overlay) overlay.style.display = 'flex';
+  },
+
+  /* ── QUICK GUIDE ────────────────────────────────────── */
+  showQuickGuide() {
+    const el = document.getElementById('quick-guide-content');
+    if (!el) return;
+    const steps = [
+      { icon:'✅', title:'Add your first task', desc:'Go to Tasks and tap "+ Task" to plan your day', action:'Nav.go("tasks");UI.openModal("add-task-modal")', cta:'Add Task' },
+      { icon:'💰', title:'Track an expense', desc:'Go to Finance and record what you spend', action:'Nav.go("finance");Finance.openAddModal()', cta:'Add Expense' },
+      { icon:'🔔', title:'Set a reminder', desc:'Open Reminders and schedule your first alert', action:'UI.openModal("add-reminder-modal");document.getElementById("rem-date").value=APP.today()', cta:'Set Reminder' },
+      { icon:'🔥', title:'Start a habit', desc:'Go to Habits and create your first daily habit', action:'QA.open("habit")', cta:'Add Habit' },
+      { icon:'💧', title:'Log water intake', desc:'Track your daily hydration from the dashboard', action:'QA.open("water")', cta:'Log Water' },
+    ];
+    el.innerHTML = `
+      <div style="font-size:13px;color:var(--c-text2);margin-bottom:16px;line-height:1.5">Welcome to LifeOS! Here's how to get started in 5 steps:</div>
+      ${steps.map((s,i)=>`
+        <div style="display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--c-border);${i===steps.length-1?'border-bottom:none':''}">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(124,111,247,.1);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${s.icon}</div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:700;margin-bottom:2px">${s.title}</div>
+            <div style="font-size:11px;color:var(--c-text2);margin-bottom:7px">${s.desc}</div>
+            <button class="btn btn-secondary btn-sm" onclick="${s.action};UI.closeModal('quick-guide-modal')">${s.cta} →</button>
+          </div>
+        </div>`).join('')}
+      <button class="btn btn-primary btn-block" style="margin-top:16px" onclick="UI.closeModal('quick-guide-modal');UI.toast('You\\'re all set! Explore LifeOS AI 🚀','success',3000)">Got it, let's go! 🚀</button>
+      <div style="text-align:center;margin-top:10px"><span style="font-size:11px;color:var(--c-text3);cursor:pointer" onclick="UI.closeModal('quick-guide-modal')">Skip for now</span></div>
+    `;
+    UI.openModal('quick-guide-modal');
+  },
+
+  /* ── HEALTH MONITOR ─────────────────────────────────── */
+  refreshHealthMonitor() {
+    const el = document.getElementById('health-monitor-content');
+    if (!el) return;
+    const s = APP.state;
+    const sz = JSON.stringify(s).length;
+    const lsUsed = Object.keys(localStorage).reduce((a,k)=>{try{return a+(localStorage.getItem(k)||'').length;}catch(e){return a;}},0);
+    const rems = (s.alarmSettings?.reminders||[]).filter(r=>!r.fired&&!r.dismissed);
+    const score = LifeScore.calc();
+    const perf = window.performance?.memory;
+    el.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        ${[
+          ['📊','State Size',`${(sz/1024).toFixed(1)} KB`,(sz<50000?'good':sz<100000?'warn':'bad')],
+          ['💾','LocalStorage',`${(lsUsed/1024).toFixed(1)} KB`,(lsUsed<400000?'good':lsUsed<700000?'warn':'bad')],
+          ['🔔','Active Reminders',rems.length,(rems.length<10?'good':rems.length<20?'warn':'bad')],
+          ['⭐','Life Score',`${score.total}%`,(score.total>=70?'good':score.total>=50?'warn':'bad')],
+          ['💳','Transactions',s.finance.transactions.length,'good'],
+          ['🔥','Habits',s.habits.list.length,'good'],
+          ['🛒','Pantry Items',s.grocery.items.length,'good'],
+          ['📝','Tasks',s.tasks.tasks.length,'good'],
+          ...(perf?[['🧠','JS Heap',`${(perf.usedJSHeapSize/1048576).toFixed(1)}MB`,(perf.usedJSHeapSize<50e6?'good':perf.usedJSHeapSize<100e6?'warn':'bad')]]:[]),
+        ].map(([i,l,v,status])=>`<div style="display:flex;align-items:center;gap:6px;padding:5px 0"><span class="perf-dot perf-${status}"></span><span style="flex:1;color:var(--c-text2)">${l}</span><strong>${v}</strong></div>`).join('')}
+      </div>
+      <div style="margin-top:10px;font-size:10px;color:var(--c-text3)">Last updated: ${new Date().toLocaleTimeString('en-IN')}</div>
+    `;
+    // Reminders list
+    const rl = document.getElementById('bt-reminders-list');
+    if (rl) {
+      rl.innerHTML = rems.length ? rems.slice(0,5).map(r=>`<div style="padding:4px 0;border-bottom:1px solid var(--c-border)">${Alarm._typeEmoji(r.type)} <strong>${r.title}</strong> — ${new Date(r.fireAt).toLocaleString('en-IN',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}</div>`).join('') : '<div style="color:var(--c-text3)">No active reminders</div>';
+    }
+  },
+
+  /* ── STORAGE HEALTH ─────────────────────────────────── */
+  renderStorageHealth(container) {
+    if (!container) return;
+    const sz = JSON.stringify(APP.state).length;
+    const maxSz = 5 * 1024 * 1024; // 5MB typical LS limit
+    const pct = Math.round(sz / maxSz * 100);
+    const status = pct < 50 ? { label:'Storage Healthy', color:'var(--a-green)', icon:'✅' } : pct < 80 ? { label:'Storage Moderate', color:'var(--a-orange)', icon:'⚠️' } : { label:'Backup Recommended', color:'var(--a-red)', icon:'🚨' };
+    const lastBackup = APP.state.lastBackup ? new Date(APP.state.lastBackup).toLocaleDateString('en-IN') : 'Never';
+    container.innerHTML = `
+      <div class="font-700 text-sm mb-lg" style="text-transform:uppercase;letter-spacing:0.5px;color:var(--c-text2)">💾 Storage Health</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span style="font-size:16px">${status.icon}</span>
+        <span style="font-size:13px;font-weight:700;color:${status.color}">${status.label}</span>
+        <span style="font-size:11px;color:var(--c-text3);margin-left:auto">${(sz/1024).toFixed(1)} KB / 5 MB</span>
+      </div>
+      <div class="storage-bar"><div class="storage-fill" style="width:${pct}%;background:${status.color}"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--c-text3);margin-top:5px margin-bottom:12px">
+        <span>Used: ${pct}%</span><span>Last backup: ${lastBackup}</span>
+      </div>
+      <div style="display:flex;gap:7px;margin-top:12px">
+        <button class="btn btn-secondary btn-sm" onclick="Settings.export();APP.state.lastBackup=Date.now();APP.save();Beta.dismissBackupReminder();UI.toast('✅ Backup complete!','success')">📤 Export Backup</button>
+        <button class="btn btn-secondary btn-sm" onclick="UI.openModal('partial-reset-modal')">🗑️ Partial Reset</button>
+        <button class="btn btn-secondary btn-sm" onclick="UI.openModal('beta-tools-modal');setTimeout(()=>Beta.refreshHealthMonitor(),200)">🛠️ Beta Tools</button>
+      </div>
+    `;
+  },
+
+  /* ── EXPORT DEBUG LOG ───────────────────────────────── */
+  exportDebugLog() {
+    const log = {
+      version: BETA_VERSION, build: BETA_BUILD, timestamp: new Date().toISOString(),
+      state_size: JSON.stringify(APP.state).length,
+      transactions: APP.state.finance.transactions.length,
+      tasks: APP.state.tasks.tasks.length,
+      habits: APP.state.habits.list.length,
+      reminders: (APP.state.alarmSettings?.reminders||[]).length,
+      history: (APP.state.alarmSettings?.history||[]).slice(-20),
+      feedback: APP.state.betaFeedback || [],
+      userAgent: navigator.userAgent,
+      online: navigator.onLine,
+      storageEstimate: JSON.stringify(APP.state).length,
+    };
+    const blob = new Blob([JSON.stringify(log, null, 2)], { type:'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `lifeos-debug-${APP.today()}.json`;
+    a.click(); URL.revokeObjectURL(a.href);
+    UI.toast('📋 Debug log exported!', 'success');
+  },
+
+  /* ── ERROR HANDLER ──────────────────────────────────── */
+  initErrorHandler() {
+    window.addEventListener('error', e => {
+      console.error('LifeOS Error:', e);
+      if (e.message && e.message !== 'Script error.') {
+        const el = document.getElementById('error-fallback-detail');
+        const msg = document.getElementById('error-fallback-msg');
+        if (el) el.textContent = `Error: ${e.message} (${e.filename?.split('/').pop()}:${e.lineno})`;
+        if (msg) msg.textContent = 'An unexpected error occurred. Your data is safe in localStorage.';
+        // Only show for critical errors, not minor ones
+      }
+    });
+    window.addEventListener('unhandledrejection', e => {
+      console.warn('Unhandled promise rejection:', e.reason);
+    });
+  },
+
+  /* ── BETA BRANDING IN SETTINGS ──────────────────────── */
+  injectBetaBranding() {
+    // Sidebar logo beta chip
+    const logoTag = document.querySelector('.sb-logo-tag');
+    if (logoTag && !logoTag.querySelector('.beta-chip')) {
+      logoTag.innerHTML = 'Life Management System <span class="beta-chip">Beta</span>';
+    }
+    // Title update
+    document.title = 'LifeOS AI v4 Beta';
+  },
+
+  /* ── PATCH SETTINGS RENDER ──────────────────────────── */
+  patchSettingsPage() {
+    const orig = Settings.render.bind(Settings);
+    Settings.render = function() {
+      orig();
+      // Inject storage health & beta info into settings
+      setTimeout(() => {
+        const page = document.getElementById('page-settings');
+        if (!page) return;
+
+        // Beta info card
+        if (!page.querySelector('#beta-info-card')) {
+          const card = document.createElement('div');
+          card.id = 'beta-info-card';
+          card.className = 'card mb-xl';
+          card.innerHTML = `
+            <div class="font-700 text-sm mb-lg" style="text-transform:uppercase;letter-spacing:0.5px;color:var(--c-text2)">ℹ️ App Info</div>
+            <div class="set-row"><div class="set-label">Version</div><span style="font-size:12px;color:var(--c-text2)">${BETA_VERSION}</span></div>
+            <div class="set-row"><div class="set-label">Build</div><span style="font-size:12px;color:var(--c-text2)">${BETA_BUILD}</span></div>
+            <div class="set-row"><div class="set-label">Channel</div><span class="chip chip-purple">${BETA_CHANNEL}</span></div>
+            <div class="set-row"><div class="set-label">Status</div><span class="chip chip-green">Active</span></div>
+            <div class="set-row">
+              <div><div class="set-label">Quick Guide</div><div style="font-size:11px;color:var(--c-text3)">Step-by-step setup</div></div>
+              <button class="btn btn-secondary btn-sm" onclick="Beta.showQuickGuide()">Open Guide</button>
+            </div>
+            <div class="set-row">
+              <div><div class="set-label">Beta Tools</div><div style="font-size:11px;color:var(--c-text3)">Internal testing panel</div></div>
+              <button class="btn btn-secondary btn-sm" onclick="UI.openModal('beta-tools-modal');setTimeout(()=>Beta.refreshHealthMonitor(),200)">Open Tools</button>
+            </div>
+            <div class="set-row">
+              <div><div class="set-label">Demo Data</div><div style="font-size:11px;color:var(--c-text3)">Load/clear sample data</div></div>
+              <button class="btn btn-secondary btn-sm" onclick="UI.openModal('demo-modal')">Manage</button>
+            </div>
+            <div class="set-row">
+              <div><div class="set-label">Partial Reset</div><div style="font-size:11px;color:var(--c-text3)">Reset specific modules</div></div>
+              <button class="btn btn-secondary btn-sm" onclick="UI.openModal('partial-reset-modal')">Reset Options</button>
+            </div>
+          `;
+          page.insertBefore(card, page.querySelector('.card'));
+        }
+
+        // Storage health card
+        if (!page.querySelector('#storage-health-card')) {
+          const shCard = document.createElement('div');
+          shCard.id = 'storage-health-card';
+          shCard.className = 'card mb-xl';
+          page.appendChild(shCard);
+          Beta.renderStorageHealth(shCard);
+        }
+      }, 150);
+    };
+  },
+
+  /* ── CELEBRATE WATER GOAL ───────────────────────────── */
+  checkCelebrations() {
+    const s = APP.state;
+    const t = APP.today();
+    if (s.health.water >= s.user.waterGoal) {
+      const key = `water_goal_celebrate_${t}`;
+      if (!localStorage.getItem(key)) {
+        localStorage.setItem(key, '1');
+        setTimeout(() => Beta.celebrateWaterGoal(), 300);
+      }
+    }
+    const habLog = s.habits.log[t] || [];
+    const allDone = s.habits.list.length > 0 && habLog.filter(l=>l.done).length === s.habits.list.length;
+    if (allDone) {
+      const key2 = `habits_all_celebrate_${t}`;
+      if (!localStorage.getItem(key2)) {
+        localStorage.setItem(key2, '1');
+        setTimeout(() => Beta.celebrateHabitAllDone(), 300);
+      }
+    }
+  },
+
+  /* ── INIT ───────────────────────────────────────────── */
+  init() {
+    this.initOfflineDetection();
+    this.initInstallPrompt();
+    this.initErrorHandler();
+    this.injectBetaBranding();
+    this.patchSettingsPage();
+    this.checkBackupReminder();
+    // Check celebrations periodically
+    setInterval(() => this.checkCelebrations(), 60000);
+    // Hook into daily summary at 10pm
+    setInterval(() => {
+      if (new Date().getHours() === 22 && new Date().getMinutes() < 1) {
+        const key = `daily_summary_shown_${APP.today()}`;
+        if (!localStorage.getItem(key)) { localStorage.setItem(key,'1'); this.showDailySummary(); }
+      }
+    }, 60000);
+  },
+};
+
+/* ── OVERRIDE MORNING BRIEFING with upgraded version ── */
+const _origMorningBriefing = Alarm._showMorningBriefing?.bind(Alarm);
+if (Alarm._showMorningBriefing) {
+  Alarm._showMorningBriefing = function() { Beta.showUpgradedMorningBriefing(); };
+}
+
+/* ── OVERRIDE initApp TO RUN SPLASH FIRST ────────────── */
+const _preAlarmInitApp = initApp;
+function initAppWithSplash() {
+  Beta.runSplash(() => {
+    _preAlarmInitApp();
+    initAlarmEngine();
+    Beta.init();
+    // Show quick guide for first-time users who just onboarded
+    if (APP.state._showQuickGuide) {
+      delete APP.state._showQuickGuide;
+      APP.save();
+      setTimeout(() => Beta.showQuickGuide(), 500);
+    }
+  });
+}
+
+/* ── PATCH ONBOARD COMPLETE ────────────────────────────── */
+const _origOnboardComplete = Onboard.complete?.bind(Onboard);
+if (Onboard.complete) {
+  Onboard.complete = function() {
+    APP.state._showQuickGuide = true;
+    _origOnboardComplete();
+  };
+}
+
+/* ── PATCH TASK TOGGLE FOR CONFETTI ───────────────────── */
+const _origTaskToggle = Tasks.toggle?.bind(Tasks);
+if (Tasks.toggle) {
+  Tasks.toggle = function(id) {
+    const t = APP.state.tasks.tasks.find(t => t.id === id);
+    const wasDone = t?.done;
+    _origTaskToggle(id);
+    if (t && !wasDone && t.done) {
+      Beta.showConfetti();
+    }
+  };
+}
+
+/* ── PATCH HABIT TOGGLE FOR CONFETTI ─────────────────── */
+const _origHabitsToggle = Habits.toggleToday?.bind(Habits);
+if (Habits.toggleToday) {
+  Habits.toggleToday = function(id) {
+    const t = APP.today();
+    const logBefore = APP.state.habits.log[t] || [];
+    const wasDone = logBefore.find(l => l.id === id)?.done || false;
+    _origHabitsToggle(id);
+    if (!wasDone) {
+      const habit = APP.state.habits.list.find(h => h.id === id);
+      if (habit && habit.streak > 0 && habit.streak % 7 === 0) {
+        setTimeout(() => { Beta.showConfetti(); UI.toast(`🔥 ${habit.streak}-day streak on ${habit.name}! Incredible!`, 'success', 3500); }, 200);
+      }
+      setTimeout(() => Beta.checkCelebrations(), 500);
+    }
+  };
+}
+
+/* ── PATCH WATER ADD FOR GOAL CELEBRATION ─────────────── */
+const _origAddWater = Health.addWater?.bind(Health);
+if (Health.addWater) {
+  Health.addWater = function(d) {
+    _origAddWater(d);
+    if (d > 0) setTimeout(() => Beta.checkCelebrations(), 300);
+  };
+}
+
+
 </script>
 
 <!-- ============================================================
@@ -3505,20 +4454,232 @@ function initAlarmEngine() {
   </div>
 </div>
 
-<style>
-@keyframes alarmPop{from{transform:scale(0.7) translateY(40px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
-@keyframes alarmBounce{from{transform:scale(1) rotate(-5deg)}to{transform:scale(1.1) rotate(5deg)}}
-@keyframes alarmPulse{0%,100%{box-shadow:0 0 0 0 rgba(239,83,80,0.4)}50%{box-shadow:0 0 0 12px rgba(239,83,80,0)}}
-@keyframes alarmShake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
-.overdue-task{border-left:3px solid var(--a-red)!important;background:rgba(239,83,80,0.06)!important;animation:alarmPulse 2s ease infinite}
-.overdue-badge{background:var(--a-red);color:#fff;font-size:9px;font-weight:800;padding:2px 6px;border-radius:99px;animation:alarmPulse 1.5s ease infinite}
-.reminder-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--c-border)}
-.reminder-item:last-child{border-bottom:none}
-.rem-active{border-left:3px solid var(--a-green);padding-left:8px}
-.rem-snoozed{border-left:3px solid var(--a-orange);padding-left:8px}
-.rem-fired{opacity:0.5}
-#alarm-overlay.open{display:flex!important}
-</style>
+
+
+
+
+<!-- ============================================================
+     BETA v4 — SPLASH SCREEN
+     ============================================================ -->
+<div id="splash-screen">
+  <div class="splash-logo">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+  </div>
+  <div class="splash-name">LifeOS AI</div>
+  <div class="splash-tag">Life Management System</div>
+  <div class="splash-bar-wrap"><div class="splash-bar"></div></div>
+  <div class="splash-status" id="splash-status">Initializing…</div>
+  <div style="position:absolute;bottom:32px;font-size:10px;color:var(--c-text3);letter-spacing:0.5px">v4.0 Beta · Build 2026.05.23</div>
+</div>
+
+<!-- OFFLINE BANNER -->
+<div id="offline-banner">📡 You're offline — all data is stored locally and fully accessible</div>
+
+<!-- FEEDBACK FAB -->
+<button id="feedback-fab" onclick="Beta.openFeedback()" title="Send feedback" aria-label="Feedback">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+</button>
+
+<!-- INSTALL PROMPT -->
+<div id="install-prompt">
+  <div style="display:flex;align-items:center;gap:12px">
+    <div style="width:44px;height:44px;border-radius:12px;background:var(--g-primary);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+    </div>
+    <div style="flex:1">
+      <div style="font-size:14px;font-weight:700">Install LifeOS AI</div>
+      <div style="font-size:11px;color:var(--c-text2)">Add to home screen for the best experience</div>
+    </div>
+    <button onclick="Beta.installApp()" class="btn btn-primary btn-sm">Install</button>
+    <button onclick="document.getElementById('install-prompt').classList.remove('visible')" style="background:none;border:none;color:var(--c-text3);cursor:pointer;padding:4px;font-size:16px">✕</button>
+  </div>
+</div>
+
+<!-- BACKUP REMINDER -->
+<div id="backup-reminder">
+  <div style="display:flex;gap:10px;align-items:flex-start">
+    <div style="font-size:22px">💾</div>
+    <div style="flex:1">
+      <div style="font-size:13px;font-weight:700;margin-bottom:3px">Backup Recommended</div>
+      <div style="font-size:11px;color:var(--c-text2);margin-bottom:10px">It's been 7+ days since your last backup. Export your data to keep it safe.</div>
+      <div style="display:flex;gap:7px">
+        <button class="btn btn-primary btn-sm" onclick="Settings.export();Beta.dismissBackupReminder()">📤 Export Now</button>
+        <button class="btn btn-secondary btn-sm" onclick="Beta.dismissBackupReminder()">Later</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ERROR FALLBACK -->
+<div id="error-fallback">
+  <div style="background:var(--c-bg2);border:1px solid var(--c-border);border-radius:28px;padding:32px;max-width:400px;width:100%;text-align:center;box-shadow:0 24px 80px rgba(0,0,0,0.6)">
+    <div style="font-size:52px;margin-bottom:16px">⚠️</div>
+    <div style="font-size:20px;font-weight:800;margin-bottom:8px">Something went wrong</div>
+    <div style="font-size:13px;color:var(--c-text2);line-height:1.6;margin-bottom:24px" id="error-fallback-msg">An unexpected error occurred. Your data is safe. Please refresh or restore a backup.</div>
+    <div style="display:flex;gap:8px;flex-direction:column">
+      <button class="btn btn-primary btn-block" onclick="location.reload()">🔄 Refresh App</button>
+      <button class="btn btn-secondary btn-block" onclick="Settings.export()">📤 Export Backup First</button>
+      <button class="btn btn-danger btn-block" onclick="Beta.emergencyReset()">🗑️ Emergency Reset</button>
+    </div>
+    <div style="margin-top:14px;font-size:10px;color:var(--c-text3)" id="error-fallback-detail"></div>
+  </div>
+</div>
+
+<!-- FEEDBACK MODAL -->
+<div class="modal-overlay" id="feedback-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">💬 Send Feedback</div>
+      <button class="modal-close" onclick="UI.closeModal('feedback-modal')">✕</button>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:16px" id="feedback-type-row">
+      <button class="btn btn-secondary btn-sm flex-1" id="fbt-bug" onclick="Beta.setFeedbackType('bug')" style="background:rgba(239,83,80,.1);border-color:rgba(239,83,80,.2);color:var(--a-red)">🐛 Bug</button>
+      <button class="btn btn-secondary btn-sm flex-1" id="fbt-idea" onclick="Beta.setFeedbackType('idea')">💡 Idea</button>
+      <button class="btn btn-secondary btn-sm flex-1" id="fbt-praise" onclick="Beta.setFeedbackType('praise')">⭐ Praise</button>
+      <button class="btn btn-secondary btn-sm flex-1" id="fbt-other" onclick="Beta.setFeedbackType('other')">📝 Other</button>
+    </div>
+    <div class="field"><div class="field-label">What happened?</div><textarea class="input" id="fb-text" rows="4" placeholder="Describe your feedback in detail…"></textarea></div>
+    <div class="field"><div class="field-label">Mood rating</div>
+      <div style="display:flex;gap:8px">
+        <button class="mood-btn" onclick="Beta.setFbMood(1,this)" style="font-size:22px">😢</button>
+        <button class="mood-btn" onclick="Beta.setFbMood(2,this)" style="font-size:22px">😕</button>
+        <button class="mood-btn" onclick="Beta.setFbMood(3,this)" style="font-size:22px">😐</button>
+        <button class="mood-btn" onclick="Beta.setFbMood(4,this)" style="font-size:22px">😊</button>
+        <button class="mood-btn" onclick="Beta.setFbMood(5,this)" style="font-size:22px">🤩</button>
+      </div>
+    </div>
+    <div style="background:var(--c-surface);border-radius:var(--r-md);padding:10px 12px;margin-bottom:14px;font-size:11px;color:var(--c-text3);line-height:1.6" id="fb-debug-info"></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-secondary flex-1" onclick="Beta.copyFeedback()">📋 Copy Report</button>
+      <button class="btn btn-primary flex-1" onclick="Beta.submitFeedback()">Send Feedback</button>
+    </div>
+  </div>
+</div>
+
+<!-- DAILY SUMMARY MODAL -->
+<div class="modal-overlay" id="daily-summary-modal">
+  <div class="modal" style="background:linear-gradient(135deg,var(--c-bg2),rgba(124,111,247,0.04));border-color:rgba(124,111,247,0.1)">
+    <div class="modal-header">
+      <div class="modal-title">🌙 Daily Summary</div>
+      <button class="modal-close" onclick="UI.closeModal('daily-summary-modal')">✕</button>
+    </div>
+    <div id="daily-summary-content"></div>
+    <button class="btn btn-primary btn-block" style="margin-top:16px" onclick="UI.closeModal('daily-summary-modal')">Good night! 🌙</button>
+  </div>
+</div>
+
+<!-- PARTIAL RESET MODAL -->
+<div class="modal-overlay" id="partial-reset-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">🗑️ Reset Options</div>
+      <button class="modal-close" onclick="UI.closeModal('partial-reset-modal')">✕</button>
+    </div>
+    <div style="font-size:13px;color:var(--c-text2);margin-bottom:16px;line-height:1.5">Choose what to reset. <strong style="color:var(--a-orange)">This cannot be undone.</strong> Export a backup first!</div>
+    <div style="display:flex;flex-direction:column;gap:8px" id="reset-options">
+      <button class="btn btn-secondary btn-block" onclick="Beta.partialReset('reminders')" style="justify-content:flex-start;gap:10px;padding:14px">
+        <span>🔔</span><div style="text-align:left"><div style="font-weight:700">Reset Reminders Only</div><div style="font-size:11px;color:var(--c-text2)">Clears all scheduled reminders & history</div></div>
+      </button>
+      <button class="btn btn-secondary btn-block" onclick="Beta.partialReset('health')" style="justify-content:flex-start;gap:10px;padding:14px">
+        <span>🧬</span><div style="text-align:left"><div style="font-weight:700">Reset Health Data</div><div style="font-size:11px;color:var(--c-text2)">Clears water, steps, sleep, weight logs</div></div>
+      </button>
+      <button class="btn btn-secondary btn-block" onclick="Beta.partialReset('finance')" style="justify-content:flex-start;gap:10px;padding:14px">
+        <span>💰</span><div style="text-align:left"><div style="font-weight:700">Reset Finance Data</div><div style="font-size:11px;color:var(--c-text2)">Clears all transactions & subscriptions</div></div>
+      </button>
+      <button class="btn btn-secondary btn-block" onclick="Beta.partialReset('tasks')" style="justify-content:flex-start;gap:10px;padding:14px">
+        <span>✅</span><div style="text-align:left"><div style="font-weight:700">Reset Tasks & Notes</div><div style="font-size:11px;color:var(--c-text2)">Clears all tasks and sticky notes</div></div>
+      </button>
+      <button class="btn btn-secondary btn-block" onclick="Beta.partialReset('habits')" style="justify-content:flex-start;gap:10px;padding:14px">
+        <span>🔥</span><div style="text-align:left"><div style="font-weight:700">Reset Habits</div><div style="font-size:11px;color:var(--c-text2)">Clears habits, streaks & XP</div></div>
+      </button>
+      <div class="divider"></div>
+      <button class="btn btn-danger btn-block" onclick="Beta.confirmFullReset()">🗑️ Full App Reset</button>
+    </div>
+  </div>
+</div>
+
+<!-- QUICK GUIDE MODAL -->
+<div class="modal-overlay" id="quick-guide-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">🚀 Quick Start Guide</div>
+      <button class="modal-close" onclick="UI.closeModal('quick-guide-modal')">✕</button>
+    </div>
+    <div id="quick-guide-content"></div>
+  </div>
+</div>
+
+<!-- DEMO DATA MODAL -->
+<div class="modal-overlay" id="demo-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">🎭 Demo Data</div>
+      <button class="modal-close" onclick="UI.closeModal('demo-modal')">✕</button>
+    </div>
+    <div style="text-align:center;padding:16px 0">
+      <div style="font-size:48px;margin-bottom:12px">🎭</div>
+      <div style="font-size:16px;font-weight:700;margin-bottom:8px">Load Demo Data</div>
+      <div style="font-size:13px;color:var(--c-text2);line-height:1.6;margin-bottom:20px">Instantly populate LifeOS with realistic demo data so you can explore all features.</div>
+      <div style="text-align:left;background:var(--c-surface);border-radius:var(--r-md);padding:12px;margin-bottom:20px;font-size:12px;line-height:1.8;color:var(--c-text2)">
+        ✅ 10 sample tasks<br>💰 30 transactions + budget<br>🛒 12 pantry items<br>🔥 6 habits with streaks<br>🍽️ 5 meals logged<br>💊 2 medicine reminders<br>🔔 3 scheduled reminders
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary flex-1" onclick="Beta.loadDemoData()">Load Demo Data</button>
+        <button class="btn btn-danger flex-1" onclick="Beta.clearDemoData()">Clear Demo Data</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BETA TOOLS (hidden panel) -->
+<div class="modal-overlay" id="beta-tools-modal">
+  <div class="modal" style="max-height:85vh;overflow-y:auto">
+    <div class="modal-header">
+      <div class="modal-title">🛠️ Beta Tools</div>
+      <button class="modal-close" onclick="UI.closeModal('beta-tools-modal')">✕</button>
+    </div>
+    <div style="font-size:10px;color:var(--c-text3);margin-bottom:14px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px">🔒 Internal Testing — Not for production</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
+      <button class="btn btn-secondary btn-sm" onclick="Alarm._fire({id:'beta-test',title:'🔔 Test Alarm',body:'Alarm engine is working correctly!',emoji:'🔔',type:'general',priority:'normal',navigateTo:'dashboard',sound:true,vibrate:true,snoozeable:true})">🔔 Test Alarm</button>
+      <button class="btn btn-secondary btn-sm" onclick="Alarm._fire({id:'beta-urgent',title:'🚨 Urgent Alarm',body:'Testing urgent escalation',emoji:'🚨',type:'task',priority:'urgent',navigateTo:'tasks',sound:true,vibrate:true,snoozeable:true})">🚨 Urgent Alarm</button>
+      <button class="btn btn-secondary btn-sm" onclick="Alarm._playAlarmSound('normal');UI.toast('Playing normal sound','info')">🎵 Normal Sound</button>
+      <button class="btn btn-secondary btn-sm" onclick="Alarm._playAlarmSound('urgent');UI.toast('Playing urgent sound','error')">🚨 Urgent Sound</button>
+      <button class="btn btn-secondary btn-sm" onclick="if(navigator.vibrate){navigator.vibrate([200,100,200,100,200]);UI.toast('Vibrating…','info')}else UI.toast('No vibration support','warning')">📳 Test Vibration</button>
+      <button class="btn btn-secondary btn-sm" onclick="Beta._triggerOffline()">📡 Simulate Offline</button>
+      <button class="btn btn-secondary btn-sm" onclick="Beta.showDailySummary()">🌙 Daily Summary</button>
+      <button class="btn btn-secondary btn-sm" onclick="Alarm._showMorningBriefing()">🌅 Morning Briefing</button>
+      <button class="btn btn-secondary btn-sm" onclick="Beta.showConfetti()">🎉 Confetti Test</button>
+      <button class="btn btn-secondary btn-sm" onclick="Beta.resetSplash()">🚀 Replay Splash</button>
+      <button class="btn btn-secondary btn-sm" onclick="UI.closeModal('beta-tools-modal');UI.openModal('demo-modal')">🎭 Demo Data</button>
+      <button class="btn btn-secondary btn-sm" onclick="Beta.showBackupReminder()">💾 Backup Reminder</button>
+    </div>
+    <div class="divider"></div>
+    <div style="font-size:12px;font-weight:700;margin-bottom:8px;color:var(--c-text2)">App Health Monitor</div>
+    <div id="health-monitor-content" style="font-size:12px;color:var(--c-text2);line-height:1.8"></div>
+    <div class="divider"></div>
+    <div style="font-size:12px;font-weight:700;margin-bottom:8px;color:var(--c-text2)">Active Reminders</div>
+    <div id="bt-reminders-list" style="font-size:11px;color:var(--c-text2)"></div>
+    <div class="divider"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-secondary btn-sm" onclick="Beta.exportDebugLog()">📋 Export Debug Log</button>
+      <button class="btn btn-secondary btn-sm" onclick="Alarm._missedTasks=[];document.getElementById('overdue-banner').style.display='none';UI.toast('Notifications cleared','info')">🔕 Clear Notifications</button>
+      <button class="btn btn-danger btn-sm" onclick="UI.closeModal('beta-tools-modal');UI.openModal('partial-reset-modal')">🗑️ Reset Options</button>
+    </div>
+  </div>
+</div>
+<script>
+/* ============================================================
+   FINAL BOOT - AFTER ALL DEFINITIONS
+   ============================================================ */
+APP.load();
+if(!APP.state.onboarded){
+  Onboard.buildDots();
+  document.getElementById('onboarding').classList.add('open');
+} else {
+  seedData();
+  initAppWithSplash();
+}
+</script>
 
 </body>
 </html>
