@@ -769,9 +769,10 @@ textarea.input{resize:vertical;min-height:72px;line-height:1.5}
 #splash-screen{
   position:fixed;inset:0;z-index:99999;
   background:var(--c-bg);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  display:none;flex-direction:column;align-items:center;justify-content:center;
   transition:opacity 0.6s ease,transform 0.6s ease;
 }
+#splash-screen.visible{display:flex}
 #splash-screen.hiding{opacity:0;pointer-events:none}
 .splash-logo{
   width:80px;height:80px;border-radius:22px;
@@ -1688,7 +1689,7 @@ textarea.input{resize:vertical;min-height:72px;line-height:1.5}
       </div>
       <div class="card">
         <div class="font-700 text-sm mb-lg" style="text-transform:uppercase;letter-spacing:0.5px;color:var(--c-text2)">About</div>
-        <div class="set-row"><div class="set-label">Version</div><span class="text-muted text-xs">4.0 Beta</span></div>
+        <div class="set-row"><div class="set-label">Version</div><span class="text-muted text-xs">3.0.0 Production</span></div>
         <div class="set-row"><div class="set-label">Storage Used</div><span class="text-muted text-xs" id="set-storage">Calculating…</span></div>
         <div class="set-row"><div class="set-label">Offline Status</div><span class="chip chip-green">✅ Active</span></div>
         <div class="set-row"><div class="set-label">Data Privacy</div><span class="chip chip-blue">100% Local</span></div>
@@ -1706,6 +1707,10 @@ textarea.input{resize:vertical;min-height:72px;line-height:1.5}
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
 </button>
 <script>
+
+
+
+
 'use strict';
 /* ============================================================
    CENTRALIZED STATE MANAGEMENT
@@ -2715,14 +2720,14 @@ const Onboard={
     const btn=document.getElementById('ob-btn');if(btn)btn.textContent=this.step===this.total-1?'🚀 Launch LifeOS!':'Continue →';
   },
   skip(){this.complete();},
-  complete(){APP.state.onboarded=true;APP.save();document.getElementById('onboarding')?.classList.remove('open');initApp();}
+  complete(){APP.state.onboarded=true;APP.save();document.getElementById('onboarding')?.classList.remove('open');document.body.style.overflow='';if(typeof Onboard._onComplete==='function'){Onboard._onComplete();}else{APP.runtime.booted=false;APP.runtime.booting=false;bootApp();}}
 };
 
 /* ============================================================
    NOTIFICATIONS ENGINE
    ============================================================ */
 const Notifs={
-  start(){setInterval(()=>this.check(),80000);},
+  start(){if(this._started)return;this._started=true;APP.runtime.intervals.push(setInterval(()=>this.check(),80000));},
   check(){
     if(!APP.state.settings?.notifications)return;
     const msgs=[
@@ -2753,28 +2758,8 @@ document.addEventListener('keydown',e=>{
 /* ============================================================
    APP INIT
    ============================================================ */
-function initApp(){
-  UI._applyTheme();UI.updateUserUI();Nav.buildNav();
-  const now=new Date(),h=now.getHours(),g=h<5?'Good Night':h<12?'Good Morning':h<17?'Good Afternoon':h<21?'Good Evening':'Good Night';
-  UI.setHTML('dash-greeting',`${g}, ${APP.state.user.name||'Friend'} 👋`);
-  const opts={weekday:'long',year:'numeric',month:'long',day:'numeric'};
-  UI.setHTML('dash-date',now.toLocaleDateString('en-IN',opts)+' · '+now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}));
-  setInterval(()=>{const n=new Date(),hh=n.getHours(),gg=hh<5?'Good Night':hh<12?'Good Morning':hh<17?'Good Afternoon':hh<21?'Good Evening':'Good Night';UI.setHTML('dash-greeting',`${gg}, ${APP.state.user.name||'Friend'} 👋`);UI.setHTML('dash-date',n.toLocaleDateString('en-IN',opts)+' · '+n.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}));},30000);
-  Nav.go('dashboard');Notifs.start();Pomo.update();Cal.render();
-  window.addEventListener('resize',()=>{if(Nav.current==='finance')Finance.renderBarChart();if(Nav.current==='analytics')Analytics.renderCharts();if(Nav.current==='health')Health.renderWeightChart();});
-}
-
-/* ============================================================
-   BOOT
-   ============================================================ */
-
-// Define placeholder for delayed init
-window._pendingInit = function() {
-  if (typeof initAppWithSplash === 'function') {
-    initAppWithSplash();
-  }
-};
-
+// initApp() is now handled by bootApp() — kept as no-op for safety
+function initApp(){if(APP.runtime.booted){Nav.go('dashboard');}else{APP.runtime.booted=false;APP.runtime.booting=false;bootApp();}}
 
 /* ============================================================
    ALARM & NOTIFICATION ENGINE v1.0
@@ -2791,6 +2776,8 @@ const Alarm = {
 
   /* ── INIT ─────────────────────────────────────────────── */
   init() {
+    if (this._started) return;
+    this._started = true;
     this._requestPermission();
     this._registerSW();
     this._ticker = setInterval(() => this._tick(), 30000); // every 30s
@@ -3477,106 +3464,6 @@ document.addEventListener('change', e => {
   }
 });
 
-/* ── INJECT REMINDERS INTO SETTINGS PAGE ──────────────── */
-const _origSettingsRender = Settings.render.bind(Settings);
-Settings.render = function() {
-  _origSettingsRender();
-  // Add alarm/reminders section if not present
-  setTimeout(() => {
-    const settingsPage = document.getElementById('page-settings');
-    if (!settingsPage || settingsPage.querySelector('#alarm-settings-card')) return;
-    const card = document.createElement('div');
-    card.id = 'alarm-settings-card';
-    card.className = 'card mb-xl';
-    const reminders = APP.state.alarmSettings?.reminders?.filter(r => !r.fired && !r.dismissed) || [];
-    card.innerHTML = `
-      <div class="font-700 text-sm mb-lg" style="text-transform:uppercase;letter-spacing:0.5px;color:var(--c-text2)">🔔 Alarms & Reminders</div>
-      <div class="set-row">
-        <div><div class="set-label">Active Reminders</div><div class="set-sub">${reminders.length} scheduled</div></div>
-        <button class="btn btn-secondary btn-sm" onclick="UI.openModal('add-reminder-modal');document.getElementById('rem-date').value=APP.today()">+ Add</button>
-      </div>
-      <div class="set-row">
-        <div><div class="set-label">Reminder History</div><div class="set-sub">View past alerts</div></div>
-        <button class="btn btn-secondary btn-sm" onclick="Alarm.openHistory()">View</button>
-      </div>
-      <div class="set-row">
-        <div><div class="set-label">Morning Briefing</div><div class="set-sub">Daily 6-10am summary</div></div>
-        <label class="toggle"><input type="checkbox" id="set-morning-brief" ${APP.state.alarmSettings?.morningBriefing !== false ? 'checked' : ''} onchange="APP.state.alarmSettings=APP.state.alarmSettings||{};APP.state.alarmSettings.morningBriefing=this.checked;APP.save()"><div class="toggle-track"></div></label>
-      </div>
-      <div class="set-row">
-        <div><div class="set-label">Quiet Hours</div><div class="set-sub">No alarms during sleep (10pm–7am)</div></div>
-        <label class="toggle"><input type="checkbox" id="set-quiet-hours" ${APP.state.alarmSettings?.quietHours?.enabled ? 'checked' : ''} onchange="Alarm.setQuietHours('22:00','07:00',this.checked)"><div class="toggle-track"></div></label>
-      </div>
-      <div class="set-row">
-        <div><div class="set-label">Test Alarm</div><div class="set-sub">Preview alarm sound & notification</div></div>
-        <button class="btn btn-secondary btn-sm" onclick="Alarm._fire({id:'test',title:'🔔 Test Alarm',body:'Your alarm system is working!',emoji:'🔔',type:'general',priority:'normal',navigateTo:'dashboard',sound:true,vibrate:true,snoozeable:true})">Test</button>
-      </div>
-      ${reminders.length > 0 ? `<div style="margin-top:14px"><div class="text-xs text-muted font-700" style="margin-bottom:8px;text-transform:uppercase">Upcoming Reminders</div>${reminders.slice(0,5).map(r=>`<div class="li"><div style="font-size:16px">${Alarm._typeEmoji(r.type)}</div><div class="li-body"><div class="li-title">${UI._esc(r.title)}</div><div class="li-sub">${new Date(r.fireAt).toLocaleString('en-IN',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})} · ${r.recur !== 'none' ? r.recur : 'once'}</div></div><button onclick="Alarm.deleteReminder('${r.id}');Settings.render()" style="background:none;border:none;color:var(--a-red);cursor:pointer;font-size:12px">✕</button></div>`).join('')}</div>` : ''}
-    `;
-    settingsPage.appendChild(card);
-  }, 200);
-};
-
-/* ── PATCH TASK RENDER TO ADD DATA ATTRIBUTES ──────────── */
-const _origTaskRenderList = Tasks.renderList.bind(Tasks);
-Tasks.renderList = function() {
-  _origTaskRenderList();
-  // Add data-task-id to each task LI for overdue marking
-  setTimeout(() => {
-    const taskList = document.getElementById('tasks-list');
-    if (!taskList) return;
-    const tasks = APP.state.tasks.tasks.filter(t => t.date === APP.today());
-    const items = taskList.querySelectorAll('.li');
-    tasks.forEach((task, i) => {
-      if (items[i]) items[i].dataset.taskId = task.id;
-    });
-    // Re-apply overdue markers
-    const overdue = Alarm._missedTasks || [];
-    const ids = new Set(overdue.map(t => t.id));
-    items.forEach(el => {
-      const id = parseInt(el.dataset.taskId);
-      if (ids.has(id)) {
-        el.classList.add('overdue-task');
-        // Add badge if not present
-        if (!el.querySelector('.overdue-badge')) {
-          const badge = document.createElement('span');
-          badge.className = 'overdue-badge';
-          badge.textContent = 'OVERDUE';
-          el.appendChild(badge);
-        }
-      }
-    });
-  }, 50);
-};
-
-/* ── PATCH DAILY SUMMARY INTO TICK ─────────────────────── */
-const _origTick = Alarm._tick.bind(Alarm);
-Alarm._tick = function() {
-  _origTick();
-  this._checkDailySummary(new Date());
-};
-
-/* ── START ALARM ENGINE AFTER APP INIT ──────────────────── */
-const _origInitApp = initApp;
-// Override initApp to start alarm engine after initialization
-const _alarmInitOrig = initApp;
-
-/* ── BOOT ALARM ENGINE (appended to existing boot) ───────── */
-// This will be called after the existing initApp() runs
-function initAlarmEngine() {
-  // Ensure alarmSettings exists in state
-  if (!APP.state.alarmSettings) {
-    APP.state.alarmSettings = {
-      reminders: [], history: [], firedToday: {},
-      quietHours: { start: '22:00', end: '07:00', enabled: false },
-      morningBriefing: true,
-    };
-    APP.save();
-  }
-  Alarm.init();
-}
-
-
 
 /* ============================================================
    BETA POLISH ENGINE v4.0
@@ -3596,6 +3483,7 @@ const Beta = {
     const splash = document.getElementById('splash-screen');
     const statusEl = document.getElementById('splash-status');
     if (!splash) { onDone(); return; }
+    splash.classList.add('visible');
     const steps = [
       [200,  'Loading your data…'],
       [600,  'Applying preferences…'],
@@ -3606,11 +3494,16 @@ const Beta = {
     steps.forEach(([delay, msg]) => {
       setTimeout(() => { if (statusEl) statusEl.textContent = msg; }, delay);
     });
+    // Guaranteed failsafe — splash CANNOT block app forever
+    const splashTimeout = setTimeout(() => {
+      if (splash) { splash.classList.remove('visible'); splash.classList.remove('hiding'); splash.style.display = ''; }
+      onDone();
+    }, 5000);
     setTimeout(() => {
       if (splash) {
         splash.classList.add('hiding');
-        setTimeout(() => { splash.style.display = 'none'; onDone(); }, 650);
-      } else { onDone(); }
+        setTimeout(() => { splash.classList.remove('visible'); splash.classList.remove('hiding'); splash.style.display = ''; clearTimeout(splashTimeout); onDone(); }, 650);
+      } else { clearTimeout(splashTimeout); onDone(); }
     }, 2400);
   },
 
@@ -4224,18 +4117,20 @@ const Beta = {
     const s = APP.state;
     const t = APP.today();
     if (s.health.water >= s.user.waterGoal) {
-      const key = `water_goal_celebrate_${t}`;
-      if (!localStorage.getItem(key)) {
-        localStorage.setItem(key, '1');
+      if (!APP.state.meta) APP.state.meta = {};
+      const key = 'wg_' + t;
+      if (!APP.state.meta[key]) {
+        APP.state.meta[key] = true; APP.save();
         setTimeout(() => Beta.celebrateWaterGoal(), 300);
       }
     }
     const habLog = s.habits.log[t] || [];
     const allDone = s.habits.list.length > 0 && habLog.filter(l=>l.done).length === s.habits.list.length;
     if (allDone) {
-      const key2 = `habits_all_celebrate_${t}`;
-      if (!localStorage.getItem(key2)) {
-        localStorage.setItem(key2, '1');
+      if (!APP.state.meta) APP.state.meta = {};
+      const key2 = 'habits_all_' + t;
+      if (!APP.state.meta[key2]) {
+        APP.state.meta[key2] = true; APP.save();
         setTimeout(() => Beta.celebrateHabitAllDone(), 300);
       }
     }
@@ -4243,94 +4138,551 @@ const Beta = {
 
   /* ── INIT ───────────────────────────────────────────── */
   init() {
+    if (this._started) return;
+    this._started = true;
     this.initOfflineDetection();
     this.initInstallPrompt();
     this.initErrorHandler();
     this.injectBetaBranding();
-    this.patchSettingsPage();
     this.checkBackupReminder();
     // Check celebrations periodically
-    setInterval(() => this.checkCelebrations(), 60000);
+    APP.runtime.intervals.push(setInterval(() => this.checkCelebrations(), 60000));
     // Hook into daily summary at 10pm
-    setInterval(() => {
+    APP.runtime.intervals.push(setInterval(() => {
       if (new Date().getHours() === 22 && new Date().getMinutes() < 1) {
-        const key = `daily_summary_shown_${APP.today()}`;
-        if (!localStorage.getItem(key)) { localStorage.setItem(key,'1'); this.showDailySummary(); }
+        if (!APP.state.meta) APP.state.meta = {};
+        const key = 'daily_summary_' + APP.today();
+        if (!APP.state.meta[key]) { APP.state.meta[key] = true; APP.save(); this.showDailySummary(); }
       }
-    }, 60000);
+    }, 60000));
   },
 };
 
-/* ── OVERRIDE MORNING BRIEFING with upgraded version ── */
-const _origMorningBriefing = Alarm._showMorningBriefing?.bind(Alarm);
-if (Alarm._showMorningBriefing) {
-  Alarm._showMorningBriefing = function() { Beta.showUpgradedMorningBriefing(); };
+
+
+/* ============================================================
+   RUNTIME STATE (non-persisted, session-only)
+   ============================================================ */
+APP.runtime = {
+  booted: false,
+  booting: false,
+  intervals: [],
+  listenersRegistered: false,
+  modulesStarted: false,
+  splashDone: false,
+};
+
+/* ============================================================
+   STORAGE HELPERS
+   ============================================================ */
+const STORAGE_KEY = 'lifeos_v4';
+
+function getLifeOSStorageKeys() {
+  const keys = [STORAGE_KEY];
+  // Also capture any celebration/flag keys we ever wrote
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && (k.startsWith('lifeos') || k.startsWith('water_goal_') || k.startsWith('habits_all_') || k.startsWith('daily_summary_'))) {
+        if (!keys.includes(k)) keys.push(k);
+      }
+    }
+  } catch(e) {}
+  return keys;
 }
 
-/* ── OVERRIDE initApp TO RUN SPLASH FIRST ────────────── */
-const _preAlarmInitApp = initApp;
-function initAppWithSplash() {
-  Beta.runSplash(() => {
-    _preAlarmInitApp();
-    initAlarmEngine();
-    Beta.init();
-    // Show quick guide for first-time users who just onboarded
-    if (APP.state._showQuickGuide) {
-      delete APP.state._showQuickGuide;
-      APP.save();
-      setTimeout(() => Beta.showQuickGuide(), 500);
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch(e) {
+    console.warn('LifeOS: state parse failed:', e);
+    return null;
+  }
+}
+
+function saveState() {
+  try {
+    APP.state.lastSaved = Date.now();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(APP.state));
+  } catch(e) {
+    console.error('LifeOS: save failed:', e);
+    UI.toast('Storage full — data may not save', 'warning');
+  }
+}
+
+function clearAllLifeOSStorage() {
+  getLifeOSStorageKeys().forEach(k => {
+    try { localStorage.removeItem(k); } catch(e) {}
+  });
+}
+
+/* ============================================================
+   STATE VALIDATION & REPAIR
+   ============================================================ */
+function validateAndRepairState(s) {
+  const D = APP.DEFAULTS;
+  // Top-level keys
+  if (!s.user || typeof s.user !== 'object') s.user = { ...D.user };
+  if (!s.settings || typeof s.settings !== 'object') s.settings = { ...D.settings };
+  if (!s.finance || typeof s.finance !== 'object') s.finance = { transactions:[], subscriptions:[] };
+  if (!Array.isArray(s.finance.transactions)) s.finance.transactions = [];
+  if (!Array.isArray(s.finance.subscriptions)) s.finance.subscriptions = [];
+  if (!s.grocery || typeof s.grocery !== 'object') s.grocery = { items:[], shoppingList:[] };
+  if (!Array.isArray(s.grocery.items)) s.grocery.items = [];
+  if (!Array.isArray(s.grocery.shoppingList)) s.grocery.shoppingList = [];
+  if (!s.health || typeof s.health !== 'object') s.health = { ...D.health };
+  if (typeof s.health.water !== 'number') s.health.water = 0;
+  if (typeof s.health.steps !== 'number') s.health.steps = 0;
+  if (!Array.isArray(s.health.weights)) s.health.weights = [];
+  if (!Array.isArray(s.health.workouts)) s.health.workouts = [];
+  if (!Array.isArray(s.health.medicines)) s.health.medicines = [];
+  if (!s.food || typeof s.food !== 'object') s.food = { meals:[] };
+  if (!Array.isArray(s.food.meals)) s.food.meals = [];
+  if (!s.tasks || typeof s.tasks !== 'object') s.tasks = { tasks:[], notes:[] };
+  if (!Array.isArray(s.tasks.tasks)) s.tasks.tasks = [];
+  if (!Array.isArray(s.tasks.notes)) s.tasks.notes = [];
+  if (!s.habits || typeof s.habits !== 'object') s.habits = { list:[], xp:0, log:{} };
+  if (!Array.isArray(s.habits.list)) s.habits.list = [];
+  if (typeof s.habits.xp !== 'number') s.habits.xp = 0;
+  if (!s.habits.log || typeof s.habits.log !== 'object') s.habits.log = {};
+  // alarmSettings
+  if (!s.alarmSettings || typeof s.alarmSettings !== 'object') s.alarmSettings = {};
+  if (!Array.isArray(s.alarmSettings.reminders)) s.alarmSettings.reminders = [];
+  if (!Array.isArray(s.alarmSettings.history)) s.alarmSettings.history = [];
+  if (!s.alarmSettings.firedToday || typeof s.alarmSettings.firedToday !== 'object') s.alarmSettings.firedToday = {};
+  if (!s.alarmSettings.quietHours) s.alarmSettings.quietHours = { start:'22:00', end:'07:00', enabled:false };
+  if (typeof s.alarmSettings.morningBriefing !== 'boolean') s.alarmSettings.morningBriefing = true;
+  // user defaults
+  const du = D.user;
+  ['name','budget','currency','waterGoal','stepsGoal','calGoal','protGoal','carbGoal','fatGoal'].forEach(k => {
+    if (s.user[k] === undefined || s.user[k] === null) s.user[k] = du[k];
+  });
+  // settings defaults
+  if (typeof s.settings.theme !== 'string') s.settings.theme = 'dark';
+  if (typeof s.settings.notifications !== 'boolean') s.settings.notifications = true;
+  if (typeof s.onboarded !== 'boolean') s.onboarded = false;
+  // meta flags inside state
+  if (!s.meta) s.meta = {};
+  return s;
+}
+
+/* ============================================================
+   UNIFIED RESET
+   ============================================================ */
+function resetAllData() {
+  clearAllLifeOSStorage();
+  APP.state = validateAndRepairState(JSON.parse(JSON.stringify(APP.DEFAULTS)));
+  saveState();
+}
+
+function resetSection(section) {
+  const D = APP.DEFAULTS;
+  const resets = {
+    reminders: () => { APP.state.alarmSettings = { reminders:[], history:[], firedToday:{}, quietHours:{start:'22:00',end:'07:00',enabled:false}, morningBriefing:true }; },
+    health:    () => { APP.state.health = JSON.parse(JSON.stringify(D.health)); },
+    finance:   () => { APP.state.finance = { transactions:[], subscriptions:[] }; },
+    tasks:     () => { APP.state.tasks = { tasks:[], notes:[] }; },
+    habits:    () => { APP.state.habits = { list:[], xp:0, log:{} }; },
+    grocery:   () => { APP.state.grocery = { items:[], shoppingList:[] }; },
+    food:      () => { APP.state.food = { meals:[] }; },
+  };
+  if (resets[section]) {
+    resets[section]();
+    validateAndRepairState(APP.state);
+    saveState();
+  }
+}
+
+/* ============================================================
+   PATCH APP METHODS TO USE NEW HELPERS
+   ============================================================ */
+APP.save = saveState;
+APP.load = function() {
+  const raw = loadState();
+  if (raw) {
+    this.state = this._merge(JSON.parse(JSON.stringify(this.DEFAULTS)), raw);
+  } else {
+    this.state = JSON.parse(JSON.stringify(this.DEFAULTS));
+  }
+  validateAndRepairState(this.state);
+};
+
+/* ============================================================
+   UNIFIED BOOT FUNCTION
+   ============================================================ */
+function bootApp() {
+  // Guard: prevent double-boot
+  if (APP.runtime.booting || APP.runtime.booted) return;
+  APP.runtime.booting = true;
+
+  // 1. Load & validate state
+  APP.load();
+
+  // 2. Seed demo/sample data if first run
+  if (APP.state.onboarded) seedData();
+
+  // 3. Apply theme immediately (before any render)
+  UI._applyTheme();
+  UI.updateUserUI();
+
+  // 4. Build navigation
+  Nav.buildNav();
+
+  // 5. Register global listeners (once only)
+  if (!APP.runtime.listenersRegistered) {
+    APP.runtime.listenersRegistered = true;
+    _registerGlobalListeners();
+  }
+
+  // 6. Decide flow: onboarding or app
+  if (!APP.state.onboarded) {
+    // Hide splash instantly for onboarding flow — no splash for first-time users
+    const splashEl = document.getElementById('splash-screen');
+    if (splashEl) { splashEl.classList.remove('visible'); splashEl.style.display = ''; }
+    APP.runtime.splashDone = true;
+    _startOnboarding();
+    APP.runtime.booting = false;
+    return; // app will re-enter bootApp after onboarding
+  }
+
+  // 7. Start modules (once only)
+  if (!APP.runtime.modulesStarted) {
+    APP.runtime.modulesStarted = true;
+    _startModules();
+  }
+
+  // 8. Show splash then navigate to dashboard (returning users only)
+  if (!APP.runtime.splashDone) {
+    Beta.runSplash(() => {
+      APP.runtime.splashDone = true;
+      _finalizeApp();
+    });
+  } else {
+    _finalizeApp();
+  }
+}
+
+function _startOnboarding() {
+  // Wire onboarding completion to re-enter bootApp
+  Onboard._onComplete = () => {
+    // onboarded flag already set by Onboard.complete()
+    seedData();
+    APP.runtime.splashDone = false; // allow splash for new users
+    APP.runtime.booted = false;
+    APP.runtime.booting = false;
+    bootApp();
+    setTimeout(() => Beta.showQuickGuide(), 800);
+  };
+  Onboard.buildDots();
+  document.getElementById('onboarding')?.classList.add('open');
+}
+
+function _startModules() {
+  // Start date/time updater
+  _updateDateTime();
+  APP.runtime.intervals.push(setInterval(_updateDateTime, 30000));
+
+  // Start alarm engine
+  initAlarmEngine();
+
+  // Start beta features
+  Beta.init();
+
+  // Start notifications engine
+  Notifs.start();
+
+  // Start Pomodoro display init
+  Pomo.update();
+
+  // Init calendar
+  Cal.render();
+
+  // Resize handler (once)
+  window.addEventListener('resize', _onResize);
+}
+
+function _finalizeApp() {
+  // Mark booted
+  APP.runtime.booting = false;
+  APP.runtime.booted = true;
+
+  // Navigate to dashboard
+  Nav.go('dashboard');
+
+  // Check backup reminder
+  Beta.checkBackupReminder();
+}
+
+function _updateDateTime() {
+  const now = new Date(), h = now.getHours();
+  const g = h<5?'Good Night':h<12?'Good Morning':h<17?'Good Afternoon':h<21?'Good Evening':'Good Night';
+  UI.setHTML('dash-greeting', `${g}, ${APP.state.user.name||'Friend'} 👋`);
+  const opts = { weekday:'long', year:'numeric', month:'long', day:'numeric' };
+  UI.setHTML('dash-date', now.toLocaleDateString('en-IN',opts)+' · '+now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}));
+}
+
+function _onResize() {
+  if (Nav.current==='finance') Finance.renderBarChart();
+  if (Nav.current==='analytics') Analytics.renderCharts();
+  if (Nav.current==='health') Health.renderWeightChart();
+}
+
+function _registerGlobalListeners() {
+  // Modal close on overlay click
+  document.addEventListener('click', e => {
+    if (e.target.classList.contains('modal-overlay')) UI.closeAllModals();
+  });
+  // Keyboard shortcuts
+  document.addEventListener('keydown', e => {
+    const tag = e.target.tagName;
+    if (['INPUT','TEXTAREA','SELECT'].includes(tag)) return;
+    if ((e.ctrlKey||e.metaKey) && e.key==='k') {
+      e.preventDefault();
+      UI.openModal('global-search-modal');
+      setTimeout(() => document.getElementById('gs-input')?.focus(), 100);
+      return;
+    }
+    const sc = {d:'dashboard',f:'finance',g:'grocery',h:'health',t:'tasks',b:'habits',a:'ai',l:'analytics',s:'settings'};
+    if (sc[e.key.toLowerCase()] && !e.ctrlKey && !e.metaKey) Nav.go(sc[e.key.toLowerCase()]);
+    if (e.key==='n') { e.preventDefault(); QA.open('expense'); }
+    if (e.key==='Escape') UI.closeAllModals();
+  });
+  // Recurrence toggle in reminder form
+  document.addEventListener('change', e => {
+    if (e.target.id==='rem-recur') {
+      const wrap = document.getElementById('rem-custom-interval-wrap');
+      if (wrap) wrap.style.display = e.target.value==='custom' ? 'block' : 'none';
     }
   });
 }
 
-/* ── PATCH ONBOARD COMPLETE ────────────────────────────── */
-const _origOnboardComplete = Onboard.complete?.bind(Onboard);
-if (Onboard.complete) {
-  Onboard.complete = function() {
-    APP.state._showQuickGuide = true;
-    _origOnboardComplete();
-  };
+/* ============================================================
+   ALARM ENGINE INIT (called from _startModules)
+   ============================================================ */
+function initAlarmEngine() {
+  if (APP.runtime._alarmStarted) return;
+  APP.runtime._alarmStarted = true;
+  validateAndRepairState(APP.state);
+  Alarm.init();
 }
 
-/* ── PATCH TASK TOGGLE FOR CONFETTI ───────────────────── */
-const _origTaskToggle = Tasks.toggle?.bind(Tasks);
-if (Tasks.toggle) {
-  Tasks.toggle = function(id) {
-    const t = APP.state.tasks.tasks.find(t => t.id === id);
-    const wasDone = t?.done;
-    _origTaskToggle(id);
-    if (t && !wasDone && t.done) {
-      Beta.showConfetti();
-    }
-  };
-}
+// Onboard.complete() is already fixed in the source object — no override needed
 
-/* ── PATCH HABIT TOGGLE FOR CONFETTI ─────────────────── */
-const _origHabitsToggle = Habits.toggleToday?.bind(Habits);
-if (Habits.toggleToday) {
-  Habits.toggleToday = function(id) {
-    const t = APP.today();
-    const logBefore = APP.state.habits.log[t] || [];
-    const wasDone = logBefore.find(l => l.id === id)?.done || false;
-    _origHabitsToggle(id);
-    if (!wasDone) {
-      const habit = APP.state.habits.list.find(h => h.id === id);
-      if (habit && habit.streak > 0 && habit.streak % 7 === 0) {
-        setTimeout(() => { Beta.showConfetti(); UI.toast(`🔥 ${habit.streak}-day streak on ${habit.name}! Incredible!`, 'success', 3500); }, 200);
+/* ============================================================
+   SETTINGS — safe reset that uses unified reset
+   ============================================================ */
+Settings.confirmReset = function() {
+  if (confirm('⚠️ Reset ALL LifeOS data?\n\nThis permanently deletes everything and cannot be undone.\n\nA backup will be exported first.')) {
+    Settings.export();
+    setTimeout(() => {
+      if (confirm('Backup exported. Proceed with full reset?')) {
+        resetAllData();
+        UI.toast('Reset complete. Reloading…', 'info');
+        setTimeout(() => location.reload(), 900);
       }
-      setTimeout(() => Beta.checkCelebrations(), 500);
+    }, 800);
+  }
+};
+
+// Beta partial reset uses unified resetSection
+Beta.partialReset = function(section) {
+  const labels = { reminders:'Reminders', health:'Health Data', finance:'Finance Data', tasks:'Tasks & Notes', habits:'Habits', grocery:'Grocery', food:'Food' };
+  if (!confirm(`Reset ${labels[section]||section}? This cannot be undone.`)) return;
+  resetSection(section);
+  UI.closeModal('partial-reset-modal');
+  UI.toast(`✅ ${labels[section]||section} reset`, 'success');
+  Nav.go(Nav.current);
+};
+
+Beta.confirmFullReset = function() {
+  UI.closeModal('partial-reset-modal');
+  Settings.confirmReset();
+};
+
+Beta.emergencyReset = function() {
+  if (confirm('Emergency reset? All data will be lost.')) {
+    clearAllLifeOSStorage();
+    location.reload();
+  }
+};
+
+/* ============================================================
+   MORNING BRIEFING — direct call (no monkey-patch)
+   ============================================================ */
+Alarm._showMorningBriefing = function() {
+  Beta.showUpgradedMorningBriefing();
+};
+
+/* ============================================================
+   TASK TOGGLE — confetti integrated directly
+   ============================================================ */
+const _taskToggleBase = Tasks.toggle.bind(Tasks);
+Tasks.toggle = function(id) {
+  const t = APP.state.tasks.tasks.find(x => x.id === id);
+  const wasDone = t?.done;
+  _taskToggleBase(id);
+  if (t && !wasDone && t.done) Beta.showConfetti();
+};
+
+/* ============================================================
+   HABIT TOGGLE — streak celebration integrated directly
+   ============================================================ */
+const _habitToggleBase = Habits.toggleToday.bind(Habits);
+Habits.toggleToday = function(id) {
+  const td = APP.today();
+  const logBefore = APP.state.habits.log[td] || [];
+  const wasDone = logBefore.find(l => l.id === id)?.done || false;
+  _habitToggleBase(id);
+  if (!wasDone) {
+    const habit = APP.state.habits.list.find(h => h.id === id);
+    if (habit && habit.streak > 0 && habit.streak % 7 === 0) {
+      setTimeout(() => {
+        Beta.showConfetti();
+        UI.toast(`🔥 ${habit.streak}-day streak on ${habit.name}! Amazing!`, 'success', 3500);
+      }, 200);
+    }
+    setTimeout(() => Beta.checkCelebrations(), 500);
+  }
+};
+
+/* ============================================================
+   WATER ADD — celebration check integrated directly
+   ============================================================ */
+const _waterAddBase = Health.addWater.bind(Health);
+Health.addWater = function(d) {
+  _waterAddBase(d);
+  if (d > 0) setTimeout(() => Beta.checkCelebrations(), 300);
+};
+
+/* ============================================================
+   SETTINGS RENDER — injects beta card and storage health
+   (direct override, not a re-override of a patched function)
+   ============================================================ */
+const _settingsRenderBase = Settings.render.bind(Settings);
+Settings.render = function() {
+  _settingsRenderBase();
+  setTimeout(() => {
+    const page = document.getElementById('page-settings');
+    if (!page) return;
+
+    // Alarm reminders section (from Alarm engine)
+    if (!page.querySelector('#alarm-settings-card')) {
+      const card = document.createElement('div');
+      card.id = 'alarm-settings-card';
+      card.className = 'card mb-xl';
+      const rems = (APP.state.alarmSettings?.reminders||[]).filter(r => !r.fired && !r.dismissed);
+      card.innerHTML = `
+        <div class="font-700 text-sm mb-lg" style="text-transform:uppercase;letter-spacing:0.5px;color:var(--c-text2)">🔔 Alarms & Reminders</div>
+        <div class="set-row"><div><div class="set-label">Active Reminders</div><div class="set-sub">${rems.length} scheduled</div></div><button class="btn btn-secondary btn-sm" onclick="UI.openModal('add-reminder-modal');document.getElementById('rem-date').value=APP.today()">+ Add</button></div>
+        <div class="set-row"><div><div class="set-label">Reminder History</div><div class="set-sub">View past alerts</div></div><button class="btn btn-secondary btn-sm" onclick="Alarm.openHistory()">View</button></div>
+        <div class="set-row"><div><div class="set-label">Morning Briefing</div><div class="set-sub">Daily 6-10am summary</div></div><label class="toggle"><input type="checkbox" id="set-morning-brief" ${APP.state.alarmSettings?.morningBriefing!==false?'checked':''} onchange="APP.state.alarmSettings=APP.state.alarmSettings||{};APP.state.alarmSettings.morningBriefing=this.checked;APP.save()"><div class="toggle-track"></div></label></div>
+        <div class="set-row"><div><div class="set-label">Quiet Hours</div><div class="set-sub">No alarms 10pm–7am</div></div><label class="toggle"><input type="checkbox" id="set-quiet-hours" ${APP.state.alarmSettings?.quietHours?.enabled?'checked':''} onchange="Alarm.setQuietHours('22:00','07:00',this.checked)"><div class="toggle-track"></div></label></div>
+        <div class="set-row"><div><div class="set-label">Test Alarm</div><div class="set-sub">Preview alarm system</div></div><button class="btn btn-secondary btn-sm" onclick="Alarm._fire({id:'test',title:'🔔 Test Alarm',body:'Your alarm system is working!',emoji:'🔔',type:'general',priority:'normal',navigateTo:'dashboard',sound:true,vibrate:true,snoozeable:true})">Test</button></div>
+        ${rems.length>0?`<div style="margin-top:14px"><div class="text-xs text-muted font-700" style="margin-bottom:8px;text-transform:uppercase">Upcoming</div>${rems.slice(0,5).map(r=>`<div class="li"><div style="font-size:16px">${Alarm._typeEmoji(r.type)}</div><div class="li-body"><div class="li-title">${UI._esc(r.title)}</div><div class="li-sub">${new Date(r.fireAt).toLocaleString('en-IN',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})} · ${r.recur!=='none'?r.recur:'once'}</div></div><button onclick="Alarm.deleteReminder('${r.id}');Settings.render()" style="background:none;border:none;color:var(--a-red);cursor:pointer;font-size:12px">✕</button></div>`).join('')}</div>`:''}`;
+      page.appendChild(card);
+    }
+
+    // Beta info card (at top)
+    if (!page.querySelector('#beta-info-card')) {
+      const card = document.createElement('div');
+      card.id = 'beta-info-card';
+      card.className = 'card mb-xl';
+      card.innerHTML = `
+        <div class="font-700 text-sm mb-lg" style="text-transform:uppercase;letter-spacing:0.5px;color:var(--c-text2)">ℹ️ App Info</div>
+        <div class="set-row"><div class="set-label">Version</div><span style="font-size:12px;color:var(--c-text2)">${BETA_VERSION}</span></div>
+        <div class="set-row"><div class="set-label">Build</div><span style="font-size:12px;color:var(--c-text2)">${BETA_BUILD}</span></div>
+        <div class="set-row"><div class="set-label">Channel</div><span class="chip chip-purple">${BETA_CHANNEL}</span></div>
+        <div class="set-row"><div><div class="set-label">Quick Guide</div></div><button class="btn btn-secondary btn-sm" onclick="Beta.showQuickGuide()">Open</button></div>
+        <div class="set-row"><div><div class="set-label">Beta Tools</div></div><button class="btn btn-secondary btn-sm" onclick="UI.openModal('beta-tools-modal');setTimeout(()=>Beta.refreshHealthMonitor(),200)">Open</button></div>
+        <div class="set-row"><div><div class="set-label">Demo Data</div></div><button class="btn btn-secondary btn-sm" onclick="UI.openModal('demo-modal')">Manage</button></div>
+        <div class="set-row"><div><div class="set-label">Partial Reset</div></div><button class="btn btn-secondary btn-sm" onclick="UI.openModal('partial-reset-modal')">Options</button></div>`;
+      page.insertBefore(card, page.querySelector('.card'));
+    }
+
+    // Storage health card
+    if (!page.querySelector('#storage-health-card')) {
+      const shCard = document.createElement('div');
+      shCard.id = 'storage-health-card';
+      shCard.className = 'card mb-xl';
+      page.appendChild(shCard);
+      Beta.renderStorageHealth(shCard);
+    }
+  }, 150);
+};
+
+/* ============================================================
+   TASK LIST RENDER — adds data-task-id for overdue marking
+   ============================================================ */
+const _taskListBase = Tasks.renderList.bind(Tasks);
+Tasks.renderList = function() {
+  _taskListBase();
+  setTimeout(() => {
+    const taskList = document.getElementById('tasks-list');
+    if (!taskList) return;
+    const tasks = APP.state.tasks.tasks.filter(t => t.date === APP.today());
+    taskList.querySelectorAll('.li').forEach((el, i) => {
+      if (tasks[i]) el.dataset.taskId = tasks[i].id;
+    });
+    // Re-apply overdue markers
+    const ids = new Set((Alarm._missedTasks||[]).map(t => t.id));
+    taskList.querySelectorAll('.li').forEach(el => {
+      const id = parseInt(el.dataset.taskId);
+      if (ids.has(id)) {
+        el.classList.add('overdue-task');
+        if (!el.querySelector('.overdue-badge')) {
+          const badge = document.createElement('span');
+          badge.className = 'overdue-badge';
+          badge.textContent = 'OVERDUE';
+          el.appendChild(badge);
+        }
+      }
+    });
+  }, 50);
+};
+
+/* ============================================================
+   ALARM TICK — daily summary check inline (no patch)
+   ============================================================ */
+const _alarmTickBase = Alarm._tick.bind(Alarm);
+Alarm._tick = function() {
+  _alarmTickBase();
+  this._checkDailySummary(new Date());
+};
+
+/* ============================================================
+   IMPORT — safe import with validation
+   ============================================================ */
+Settings.importFile = function(e) {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (!data || typeof data !== 'object') throw new Error('Not an object');
+      if (!data.user && !data.finance && !data.onboarded) throw new Error('Missing required fields');
+      const merged = APP._merge(JSON.parse(JSON.stringify(APP.DEFAULTS)), data);
+      validateAndRepairState(merged);
+      APP.state = merged;
+      saveState();
+      UI.toast('✅ Backup imported! Reloading…', 'success');
+      setTimeout(() => location.reload(), 1200);
+    } catch(err) {
+      UI.toast(`❌ Invalid backup: ${err.message}`, 'error', 5000);
+      console.warn('Import failed:', err);
     }
   };
-}
+  reader.readAsText(file);
+};
 
-/* ── PATCH WATER ADD FOR GOAL CELEBRATION ─────────────── */
-const _origAddWater = Health.addWater?.bind(Health);
-if (Health.addWater) {
-  Health.addWater = function(d) {
-    _origAddWater(d);
-    if (d > 0) setTimeout(() => Beta.checkCelebrations(), 300);
-  };
-}
+/* ============================================================
+   SINGLE BOOT ENTRY POINT
+   ============================================================ */
+bootApp();
+
+
 
 
 </script>
@@ -4667,19 +5019,6 @@ if (Health.addWater) {
     </div>
   </div>
 </div>
-<script>
-/* ============================================================
-   FINAL BOOT - AFTER ALL DEFINITIONS
-   ============================================================ */
-APP.load();
-if(!APP.state.onboarded){
-  Onboard.buildDots();
-  document.getElementById('onboarding').classList.add('open');
-} else {
-  seedData();
-  initAppWithSplash();
-}
-</script>
 
 </body>
 </html>
