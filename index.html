@@ -8,8 +8,8 @@
 <meta name="theme-color" content="#0a0a12">
 <meta name="apple-mobile-web-app-title" content="LifeOS AI">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%237c6ff7'/><polygon points='55,15 25,55 50,55 45,85 75,45 50,45' fill='white'/></svg>">
-<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%237c6ff7'/><polygon points='55,15 25,55 50,55 45,85 75,45 50,45' fill='white'/></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%237c6ff7'/><stop offset='1' stop-color='%234fc3f7'/></linearGradient></defs><rect width='512' height='512' rx='115' fill='url(%23g)'/><path d='M86 296h74l36-150 54 234 42-126h134' fill='none' stroke='%23ffffff' stroke-width='30' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%237c6ff7'/><stop offset='1' stop-color='%234fc3f7'/></linearGradient></defs><rect width='512' height='512' rx='115' fill='url(%23g)'/><path d='M86 296h74l36-150 54 234 42-126h134' fill='none' stroke='%23ffffff' stroke-width='30' stroke-linecap='round' stroke-linejoin='round'/></svg>">
 <meta name="description" content="LifeOS AI — Your Complete Daily Life Management System">
 <title>LifeOS AI v4 Beta</title>
 <script>
@@ -19,7 +19,7 @@
    does not break installation. */
 (function(){
   try{
-    var icon="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%237c6ff7'/><polygon points='55,15 25,55 50,55 45,85 75,45 50,45' fill='white'/></svg>";
+    var icon="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%237c6ff7'/><stop offset='1' stop-color='%234fc3f7'/></linearGradient></defs><rect width='512' height='512' rx='115' fill='url(%23g)'/><path d='M86 296h74l36-150 54 234 42-126h134' fill='none' stroke='%23ffffff' stroke-width='30' stroke-linecap='round' stroke-linejoin='round'/></svg>";
     var m={
       name:'LifeOS AI',
       short_name:'LifeOS',
@@ -1006,6 +1006,25 @@ textarea.input{resize:vertical;min-height:72px;line-height:1.5}
   box-shadow:var(--shadow-md);animation:toastIn 0.3s ease;
 }
 #backup-reminder.visible{display:block}
+/* PWA install banner */
+#install-banner{
+  position:fixed;left:50%;transform:translateX(-50%) translateY(160%);
+  bottom:calc(var(--nav-h) + var(--safe-bottom) + 14px);z-index:300;
+  display:flex;align-items:center;gap:10px;
+  background:var(--c-bg2);border:1px solid var(--c-border2);
+  border-radius:var(--r-xl);padding:10px 12px;box-shadow:var(--shadow-lg);
+  width:min(440px,calc(100vw - 24px));
+  transition:transform .45s cubic-bezier(.34,1.56,.64,1);
+}
+#install-banner.visible{transform:translateX(-50%) translateY(0)}
+#install-banner .ib-icon{width:34px;height:34px;border-radius:9px;flex-shrink:0}
+#install-banner .ib-text{font-size:12.5px;color:var(--c-text);line-height:1.4;flex:1}
+#install-banner .ib-close{background:none;border:none;color:var(--c-text3);font-size:15px;cursor:pointer;padding:4px;flex-shrink:0;line-height:1}
+@media(min-width:880px){#install-banner{bottom:calc(var(--safe-bottom) + 18px)}}
+/* Prevent iOS Safari auto-zoom on input focus (needs >=16px) */
+@media(max-width:768px){
+  .input,select.input,textarea.input{font-size:16px}
+}
 
 
 @keyframes alarmPop{from{transform:scale(0.7) translateY(40px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
@@ -1893,6 +1912,7 @@ textarea.input{resize:vertical;min-height:72px;line-height:1.5}
         <div style="display:flex;gap:var(--sp-sm);flex-wrap:wrap">
           <button class="btn btn-secondary btn-sm" onclick="Settings.export()">📤 Export JSON</button>
           <button class="btn btn-secondary btn-sm" onclick="Settings.importPrompt()">📥 Import Backup</button>
+          <button class="btn btn-secondary btn-sm" onclick="PWA.promptFromSettings()">📲 Install App</button>
           <button class="btn btn-danger btn-sm" onclick="Settings.confirmReset()">🗑️ Reset All Data</button>
         </div>
         <input type="file" id="import-file" accept=".json" style="display:none" onchange="Settings.importFile(event)">
@@ -1916,6 +1936,14 @@ textarea.input{resize:vertical;min-height:72px;line-height:1.5}
 <button id="fab" onclick="QA.open('expense')" title="Quick Add (N)" aria-label="Quick Add">
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
 </button>
+
+<!-- PWA Install Banner -->
+<div id="install-banner" role="dialog" aria-label="Install LifeOS">
+  <img class="ib-icon" alt="" src="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%237c6ff7'/><stop offset='1' stop-color='%234fc3f7'/></linearGradient></defs><rect width='512' height='512' rx='115' fill='url(%23g)'/><path d='M86 296h74l36-150 54 234 42-126h134' fill='none' stroke='%23ffffff' stroke-width='30' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+  <span class="ib-text" id="install-text">Install LifeOS for a full-screen app experience</span>
+  <button id="install-btn" class="btn btn-primary btn-sm" onclick="PWA.install()">Install</button>
+  <button class="ib-close" onclick="PWA.dismiss()" aria-label="Dismiss">✕</button>
+</div>
 <script>
 
 
@@ -3077,6 +3105,49 @@ const Notifs={
     const msg=msgs[Math.floor(Math.random()*msgs.length)]();
     if(msg)UI.toast(msg,'info',4000);
   }
+};
+
+/* ============================================================
+   PWA INSTALL (Add to Home Screen)
+   ============================================================ */
+const PWA={
+  _deferred:null,
+  _isStandalone(){return window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;},
+  _isIOS(){return /iphone|ipad|ipod/i.test(navigator.userAgent)&&!window.MSStream;},
+  _dismissed(){return localStorage.getItem('lifeos_install_dismissed')==='1';},
+  init(){
+    if(this._initDone)return;this._initDone=true;
+    if(this._isStandalone())return; // already installed — nothing to prompt
+    window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();this._deferred=e;this.showBanner(false);});
+    window.addEventListener('appinstalled',()=>{this._deferred=null;this.hideBanner();UI.toast('LifeOS installed! 🎉','success');});
+    // iOS Safari never fires beforeinstallprompt — show manual instructions instead
+    if(this._isIOS()&&!this._dismissed()){setTimeout(()=>this.showBanner(true),3500);}
+  },
+  showBanner(ios){
+    if(this._dismissed()||this._isStandalone())return;
+    const b=document.getElementById('install-banner');if(!b)return;
+    const txt=document.getElementById('install-text');
+    const btn=document.getElementById('install-btn');
+    if(txt)txt.textContent=ios?'Install LifeOS: tap Share ⎙ then “Add to Home Screen”':'Install LifeOS for a full-screen app experience';
+    if(btn)btn.style.display=ios?'none':'';
+    b.classList.add('visible');
+  },
+  hideBanner(){document.getElementById('install-banner')?.classList.remove('visible');},
+  dismiss(){localStorage.setItem('lifeos_install_dismissed','1');this.hideBanner();},
+  async install(){
+    if(!this._deferred){UI.toast('Open your browser menu → “Install app” / “Add to Home Screen”','info',5000);return;}
+    this._deferred.prompt();
+    try{const{outcome}=await this._deferred.userChoice;if(outcome==='accepted')UI.toast('Installing LifeOS… 🚀','success');}catch(e){}
+    this._deferred=null;this.hideBanner();
+  },
+  // Allow re-opening from Settings even after dismissal
+  promptFromSettings(){
+    if(this._isStandalone())return UI.toast('LifeOS is already installed ✅','success');
+    localStorage.removeItem('lifeos_install_dismissed');
+    if(this._deferred){this.install();}
+    else if(this._isIOS()){this.showBanner(true);}
+    else{UI.toast('Open your browser menu → “Install app” / “Add to Home Screen”','info',5000);}
+  },
 };
 
 /* ============================================================
@@ -4683,6 +4754,7 @@ function bootApp() {
   if (!APP.runtime.listenersRegistered) {
     APP.runtime.listenersRegistered = true;
     _registerGlobalListeners();
+    PWA.init();
   }
 
   // 6. Decide flow: onboarding or app
