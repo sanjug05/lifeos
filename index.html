@@ -8,8 +8,8 @@
 <meta name="theme-color" content="#0a0a12">
 <meta name="apple-mobile-web-app-title" content="LifeOS AI">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%237c6ff7'/><polygon points='55,15 25,55 50,55 45,85 75,45 50,45' fill='white'/></svg>">
-<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%237c6ff7'/><polygon points='55,15 25,55 50,55 45,85 75,45 50,45' fill='white'/></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%237c6ff7'/><stop offset='1' stop-color='%234fc3f7'/></linearGradient></defs><rect width='512' height='512' rx='115' fill='url(%23g)'/><path d='M86 296h74l36-150 54 234 42-126h134' fill='none' stroke='%23ffffff' stroke-width='30' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%237c6ff7'/><stop offset='1' stop-color='%234fc3f7'/></linearGradient></defs><rect width='512' height='512' rx='115' fill='url(%23g)'/><path d='M86 296h74l36-150 54 234 42-126h134' fill='none' stroke='%23ffffff' stroke-width='30' stroke-linecap='round' stroke-linejoin='round'/></svg>">
 <meta name="description" content="LifeOS AI — Your Complete Daily Life Management System">
 <title>LifeOS AI v4 Beta</title>
 <script>
@@ -19,7 +19,7 @@
    does not break installation. */
 (function(){
   try{
-    var icon="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%237c6ff7'/><polygon points='55,15 25,55 50,55 45,85 75,45 50,45' fill='white'/></svg>";
+    var icon="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%237c6ff7'/><stop offset='1' stop-color='%234fc3f7'/></linearGradient></defs><rect width='512' height='512' rx='115' fill='url(%23g)'/><path d='M86 296h74l36-150 54 234 42-126h134' fill='none' stroke='%23ffffff' stroke-width='30' stroke-linecap='round' stroke-linejoin='round'/></svg>";
     var m={
       name:'LifeOS AI',
       short_name:'LifeOS',
@@ -1006,6 +1006,25 @@ textarea.input{resize:vertical;min-height:72px;line-height:1.5}
   box-shadow:var(--shadow-md);animation:toastIn 0.3s ease;
 }
 #backup-reminder.visible{display:block}
+/* PWA install banner */
+#install-banner{
+  position:fixed;left:50%;transform:translateX(-50%) translateY(160%);
+  bottom:calc(var(--nav-h) + var(--safe-bottom) + 14px);z-index:300;
+  display:flex;align-items:center;gap:10px;
+  background:var(--c-bg2);border:1px solid var(--c-border2);
+  border-radius:var(--r-xl);padding:10px 12px;box-shadow:var(--shadow-lg);
+  width:min(440px,calc(100vw - 24px));
+  transition:transform .45s cubic-bezier(.34,1.56,.64,1);
+}
+#install-banner.visible{transform:translateX(-50%) translateY(0)}
+#install-banner .ib-icon{width:34px;height:34px;border-radius:9px;flex-shrink:0}
+#install-banner .ib-text{font-size:12.5px;color:var(--c-text);line-height:1.4;flex:1}
+#install-banner .ib-close{background:none;border:none;color:var(--c-text3);font-size:15px;cursor:pointer;padding:4px;flex-shrink:0;line-height:1}
+@media(min-width:880px){#install-banner{bottom:calc(var(--safe-bottom) + 18px)}}
+/* Prevent iOS Safari auto-zoom on input focus (needs >=16px) */
+@media(max-width:768px){
+  .input,select.input,textarea.input{font-size:16px}
+}
 
 
 @keyframes alarmPop{from{transform:scale(0.7) translateY(40px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
@@ -1137,17 +1156,28 @@ textarea.input{resize:vertical;min-height:72px;line-height:1.5}
       <div class="ob-step">
         <span class="ob-emoji">👤</span>
         <div class="ob-title">Set Up Your Profile</div>
-        <div class="ob-desc">Quick personalization to power your AI insights.</div>
-        <div style="text-align:left;margin-bottom:4px">
-          <div class="field"><div class="field-label">Your Name</div><input class="input" id="ob-name" placeholder="e.g. Alex" value="Alex" autocomplete="given-name"></div>
+        <div class="ob-desc">Enter your real details — everything in LifeOS will be personalized to you.</div>
+        <div style="text-align:left;margin-bottom:4px;max-height:48vh;overflow-y:auto;padding-right:4px">
+          <div class="field"><div class="field-label">Your Name</div><input class="input" id="ob-name" placeholder="Enter your name" autocomplete="name"></div>
           <div class="field"><div class="field-label">Monthly Budget</div>
             <div style="display:flex;gap:8px;align-items:center">
-              <select class="input" id="ob-currency" style="width:80px"><option value="₹">₹ INR</option><option value="$">$ USD</option><option value="€">€ EUR</option><option value="£">£ GBP</option></select>
-              <input class="input" id="ob-budget" type="number" placeholder="50000" value="50000">
+              <select class="input" id="ob-currency" style="width:94px"><option value="₹">₹ INR</option><option value="$">$ USD</option><option value="€">€ EUR</option><option value="£">£ GBP</option><option value="¥">¥ JPY</option><option value="₩">₩ KRW</option><option value="A$">A$ AUD</option><option value="C$">C$ CAD</option></select>
+              <input class="input" id="ob-budget" type="number" inputmode="numeric" placeholder="e.g. 50000">
             </div>
           </div>
-          <div class="field"><div class="field-label">Daily Water Goal (glasses)</div><input class="input" id="ob-water" type="number" placeholder="8" value="8"></div>
-          <div class="field"><div class="field-label">Daily Step Goal</div><input class="input" id="ob-steps" type="number" placeholder="10000" value="10000"></div>
+          <div class="field"><div class="field-label">Monthly Income (optional)</div><input class="input" id="ob-income" type="number" inputmode="numeric" placeholder="e.g. 80000"></div>
+          <div class="input-row">
+            <div class="field"><div class="field-label">Water Goal (glasses)</div><input class="input" id="ob-water" type="number" inputmode="numeric" placeholder="8" value="8"></div>
+            <div class="field"><div class="field-label">Step Goal</div><input class="input" id="ob-steps" type="number" inputmode="numeric" placeholder="10000" value="10000"></div>
+          </div>
+          <div class="input-row">
+            <div class="field"><div class="field-label">Calorie Goal (kcal)</div><input class="input" id="ob-cal" type="number" inputmode="numeric" placeholder="2000" value="2000"></div>
+            <div class="field"><div class="field-label">Sleep Goal (hours)</div><input class="input" id="ob-sleep" type="number" inputmode="decimal" placeholder="8" value="8"></div>
+          </div>
+          <div class="input-row">
+            <div class="field"><div class="field-label">Wake Time</div><input class="input" id="ob-wake" type="time" value="06:30"></div>
+            <div class="field"><div class="field-label">Bed Time</div><input class="input" id="ob-bed" type="time" value="23:00"></div>
+          </div>
         </div>
       </div>
       <div class="ob-step">
@@ -1168,7 +1198,7 @@ textarea.input{resize:vertical;min-height:72px;line-height:1.5}
       <div class="ob-step">
         <span class="ob-emoji">✅</span>
         <div class="ob-title">You're All Set!</div>
-        <div class="ob-desc">LifeOS AI is fully loaded. Your data is private — stored only on your device. Press start to begin your journey.</div>
+        <div class="ob-desc">Your LifeOS starts fresh and clean — no sample data, just yours. Everything you log stays private on this device. Press start to begin your journey.</div>
       </div>
     </div>
     <button class="btn btn-primary btn-block btn-lg" id="ob-btn" onclick="Onboard.next()" style="margin-top:4px">Get Started →</button>
@@ -1882,6 +1912,7 @@ textarea.input{resize:vertical;min-height:72px;line-height:1.5}
         <div style="display:flex;gap:var(--sp-sm);flex-wrap:wrap">
           <button class="btn btn-secondary btn-sm" onclick="Settings.export()">📤 Export JSON</button>
           <button class="btn btn-secondary btn-sm" onclick="Settings.importPrompt()">📥 Import Backup</button>
+          <button class="btn btn-secondary btn-sm" onclick="PWA.promptFromSettings()">📲 Install App</button>
           <button class="btn btn-danger btn-sm" onclick="Settings.confirmReset()">🗑️ Reset All Data</button>
         </div>
         <input type="file" id="import-file" accept=".json" style="display:none" onchange="Settings.importFile(event)">
@@ -1905,6 +1936,14 @@ textarea.input{resize:vertical;min-height:72px;line-height:1.5}
 <button id="fab" onclick="QA.open('expense')" title="Quick Add (N)" aria-label="Quick Add">
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
 </button>
+
+<!-- PWA Install Banner -->
+<div id="install-banner" role="dialog" aria-label="Install LifeOS">
+  <img class="ib-icon" alt="" src="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%237c6ff7'/><stop offset='1' stop-color='%234fc3f7'/></linearGradient></defs><rect width='512' height='512' rx='115' fill='url(%23g)'/><path d='M86 296h74l36-150 54 234 42-126h134' fill='none' stroke='%23ffffff' stroke-width='30' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+  <span class="ib-text" id="install-text">Install LifeOS for a full-screen app experience</span>
+  <button id="install-btn" class="btn btn-primary btn-sm" onclick="PWA.install()">Install</button>
+  <button class="ib-close" onclick="PWA.dismiss()" aria-label="Dismiss">✕</button>
+</div>
 <script>
 
 
@@ -1917,7 +1956,7 @@ textarea.input{resize:vertical;min-height:72px;line-height:1.5}
 const APP = {
   state: null,
   DEFAULTS: {
-    user: { name:'Alex', budget:50000, currency:'₹', waterGoal:8, stepsGoal:10000, calGoal:2000, protGoal:150, carbGoal:250, fatGoal:65 },
+    user: { name:'', budget:0, income:0, currency:'₹', waterGoal:8, stepsGoal:10000, calGoal:2000, sleepGoal:8, protGoal:150, carbGoal:250, fatGoal:65 },
     settings: { theme:'dark', notifications:true, aiInsights:true, compact:false, geminiKey:'', aiModel:'gemini-2.5-flash' },
     finance: { transactions:[], subscriptions:[] },
     grocery: { items:[], shoppingList:[] },
@@ -2156,6 +2195,11 @@ const LifeScore = {
    SEED DEMO DATA
    ============================================================ */
 function seedData() {
+  /* Demo/sample data has been removed. LifeOS now starts completely empty and is
+     populated only with the user's real data via onboarding and in-app actions.
+     This function is intentionally a no-op (kept so existing call sites stay valid). */
+  return;
+  /* eslint-disable no-unreachable */
   const s=APP.state;
   if(!s.finance.transactions.length){
     const cats=['Food','Transport','Shopping','Entertainment','Bills','Groceries','Health'];
@@ -3014,7 +3058,22 @@ const Onboard={
   step:0,total:6,
   buildDots(){const el=document.getElementById('ob-dots');if(!el)return;el.innerHTML=Array.from({length:this.total},(_,i)=>`<div class="ob-dot ${i===0?'active':''}"></div>`).join('');},
   next(){
-    if(this.step===1){APP.state.user.name=document.getElementById('ob-name')?.value?.trim()||'Alex';APP.state.user.budget=parseInt(document.getElementById('ob-budget')?.value)||50000;APP.state.user.waterGoal=parseInt(document.getElementById('ob-water')?.value)||8;APP.state.user.stepsGoal=parseInt(document.getElementById('ob-steps')?.value)||10000;APP.state.user.currency=document.getElementById('ob-currency')?.value||'₹';APP.save();}
+    if(this.step===1){
+      const nameEl=document.getElementById('ob-name');const nm=(nameEl?.value||'').trim();
+      if(!nm){UI.toast('Please enter your name to continue','warning');nameEl?.focus();return;}
+      const u=APP.state.user,num=(id,d)=>{const v=parseFloat(document.getElementById(id)?.value);return isNaN(v)?d:v;};
+      u.name=nm;
+      u.currency=document.getElementById('ob-currency')?.value||'₹';
+      u.budget=num('ob-budget',0);
+      u.income=num('ob-income',0);
+      u.waterGoal=num('ob-water',8);
+      u.stepsGoal=num('ob-steps',10000);
+      u.calGoal=num('ob-cal',2000);
+      u.sleepGoal=num('ob-sleep',8);
+      APP.state.health.waketime=document.getElementById('ob-wake')?.value||'06:30';
+      APP.state.health.bedtime=document.getElementById('ob-bed')?.value||'23:00';
+      APP.save();
+    }
     this.step++;if(this.step>=this.total){this.complete();return;}
     document.querySelectorAll('.ob-step').forEach((el,i)=>el.classList.toggle('active',i===this.step));
     document.querySelectorAll('.ob-dot').forEach((el,i)=>el.classList.toggle('active',i===this.step));
@@ -3028,7 +3087,11 @@ const Onboard={
    NOTIFICATIONS ENGINE
    ============================================================ */
 const Notifs={
-  start(){if(this._started)return;this._started=true;APP.runtime.intervals.push(setInterval(()=>this.check(),80000));},
+  // Periodic random motivational toasts were removed — they spammed the UI.
+  // Genuine, time-based reminders (medicines, bills, tasks) are handled by the
+  // Alarm engine instead. start() is now a no-op; check() can still be called
+  // manually if a one-off nudge is ever needed.
+  start(){this._started=true;},
   check(){
     if(!APP.state.settings?.notifications)return;
     const msgs=[
@@ -3042,6 +3105,49 @@ const Notifs={
     const msg=msgs[Math.floor(Math.random()*msgs.length)]();
     if(msg)UI.toast(msg,'info',4000);
   }
+};
+
+/* ============================================================
+   PWA INSTALL (Add to Home Screen)
+   ============================================================ */
+const PWA={
+  _deferred:null,
+  _isStandalone(){return window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;},
+  _isIOS(){return /iphone|ipad|ipod/i.test(navigator.userAgent)&&!window.MSStream;},
+  _dismissed(){return localStorage.getItem('lifeos_install_dismissed')==='1';},
+  init(){
+    if(this._initDone)return;this._initDone=true;
+    if(this._isStandalone())return; // already installed — nothing to prompt
+    window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();this._deferred=e;this.showBanner(false);});
+    window.addEventListener('appinstalled',()=>{this._deferred=null;this.hideBanner();UI.toast('LifeOS installed! 🎉','success');});
+    // iOS Safari never fires beforeinstallprompt — show manual instructions instead
+    if(this._isIOS()&&!this._dismissed()){setTimeout(()=>this.showBanner(true),3500);}
+  },
+  showBanner(ios){
+    if(this._dismissed()||this._isStandalone())return;
+    const b=document.getElementById('install-banner');if(!b)return;
+    const txt=document.getElementById('install-text');
+    const btn=document.getElementById('install-btn');
+    if(txt)txt.textContent=ios?'Install LifeOS: tap Share ⎙ then “Add to Home Screen”':'Install LifeOS for a full-screen app experience';
+    if(btn)btn.style.display=ios?'none':'';
+    b.classList.add('visible');
+  },
+  hideBanner(){document.getElementById('install-banner')?.classList.remove('visible');},
+  dismiss(){localStorage.setItem('lifeos_install_dismissed','1');this.hideBanner();},
+  async install(){
+    if(!this._deferred){UI.toast('Open your browser menu → “Install app” / “Add to Home Screen”','info',5000);return;}
+    this._deferred.prompt();
+    try{const{outcome}=await this._deferred.userChoice;if(outcome==='accepted')UI.toast('Installing LifeOS… 🚀','success');}catch(e){}
+    this._deferred=null;this.hideBanner();
+  },
+  // Allow re-opening from Settings even after dismissal
+  promptFromSettings(){
+    if(this._isStandalone())return UI.toast('LifeOS is already installed ✅','success');
+    localStorage.removeItem('lifeos_install_dismissed');
+    if(this._deferred){this.install();}
+    else if(this._isIOS()){this.showBanner(true);}
+    else{UI.toast('Open your browser menu → “Install app” / “Add to Home Screen”','info',5000);}
+  },
 };
 
 /* ============================================================
@@ -4557,7 +4663,7 @@ function validateAndRepairState(s) {
   if (typeof s.alarmSettings.morningBriefing !== 'boolean') s.alarmSettings.morningBriefing = true;
   // user defaults
   const du = D.user;
-  ['name','budget','currency','waterGoal','stepsGoal','calGoal','protGoal','carbGoal','fatGoal'].forEach(k => {
+  ['name','budget','income','currency','waterGoal','stepsGoal','calGoal','sleepGoal','protGoal','carbGoal','fatGoal'].forEach(k => {
     if (s.user[k] === undefined || s.user[k] === null) s.user[k] = du[k];
   });
   // settings defaults
@@ -4624,8 +4730,18 @@ function bootApp() {
   // 1. Load & validate state
   APP.load();
 
-  // 2. Seed demo/sample data if first run
-  if (APP.state.onboarded) seedData();
+  // 2. One-time migration: purge any legacy demo/sample data so every existing
+  //    install starts fresh with the user's real data only. Preserves the user's
+  //    AI key and theme, then sends them through onboarding to enter real details.
+  if (!APP.state.meta || !APP.state.meta.demoPurged) {
+    const fresh = JSON.parse(JSON.stringify(APP.DEFAULTS));
+    fresh.settings.geminiKey = APP.state.settings?.geminiKey || '';
+    fresh.settings.aiModel = APP.state.settings?.aiModel || 'gemini-2.5-flash';
+    fresh.settings.theme = APP.state.settings?.theme || 'dark';
+    fresh.meta = { demoPurged: true };
+    APP.state = validateAndRepairState(fresh);
+    APP.save();
+  }
 
   // 3. Apply theme immediately (before any render)
   UI._applyTheme();
@@ -4638,6 +4754,7 @@ function bootApp() {
   if (!APP.runtime.listenersRegistered) {
     APP.runtime.listenersRegistered = true;
     _registerGlobalListeners();
+    PWA.init();
   }
 
   // 6. Decide flow: onboarding or app
@@ -4672,7 +4789,7 @@ function _startOnboarding() {
   // Wire onboarding completion to re-enter bootApp
   Onboard._onComplete = () => {
     // onboarded flag already set by Onboard.complete()
-    seedData();
+    // No demo data — the user starts with a clean, real account.
     APP.runtime.splashDone = false; // allow splash for new users
     APP.runtime.booted = false;
     APP.runtime.booting = false;
