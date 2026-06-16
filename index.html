@@ -12,6 +12,33 @@
 <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%237c6ff7'/><polygon points='55,15 25,55 50,55 45,85 75,45 50,45' fill='white'/></svg>">
 <meta name="description" content="LifeOS AI — Your Complete Daily Life Management System">
 <title>LifeOS AI v4 Beta</title>
+<script>
+/* PWA Web App Manifest — generated at runtime so this single-file app stays
+   installable ("Add to Home Screen") from any host without a separate file.
+   Uses absolute start_url/scope so relative resolution against the data: URI
+   does not break installation. */
+(function(){
+  try{
+    var icon="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%237c6ff7'/><polygon points='55,15 25,55 50,55 45,85 75,45 50,45' fill='white'/></svg>";
+    var m={
+      name:'LifeOS AI',
+      short_name:'LifeOS',
+      description:'Your complete daily life management system',
+      start_url:location.href.split('#')[0],
+      scope:new URL('.',location.href).href,
+      display:'standalone',
+      orientation:'portrait',
+      background_color:'#0a0a12',
+      theme_color:'#0a0a12',
+      icons:[{src:icon,sizes:'any',type:'image/svg+xml',purpose:'any maskable'}]
+    };
+    var link=document.createElement('link');
+    link.rel='manifest';
+    link.href='data:application/manifest+json,'+encodeURIComponent(JSON.stringify(m));
+    document.head.appendChild(link);
+  }catch(e){}
+})();
+</script>
 <style>
 /* ============================================================
    CSS CUSTOM PROPERTIES & DESIGN TOKENS
