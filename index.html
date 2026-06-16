@@ -2287,12 +2287,12 @@ const Dashboard={
     APP.state.health.workouts.filter(w=>w.date===t).forEach(w=>events.push({time:'',title:`💪 ${w.name}`,sub:`${w.duration} · ${w.calories} kcal`,color:'#4fc3f7'}));
     APP.state.finance.transactions.filter(x=>x.date===t).forEach(x=>events.push({time:'',title:`💳 ${x.desc}`,sub:`${x.type==='income'?'+':'-'}${APP.fc(x.amount)}`,color:x.type==='income'?'#66bb6a':'#ef5350'}));
     events.sort((a,b)=>(a.time||'99:99').localeCompare(b.time||'99:99'));
-    UI.setHTML('dash-timeline',events.length?events.map(e=>`<div class="tl-item" style="--tl-color:${e.color}"><div class="tl-time">${e.time||'—'}</div><div class="tl-content"><div class="tl-title">${e.title}</div><div class="tl-sub">${e.sub}</div></div></div>`).join(''):'<div class="empty-state" style="padding:20px"><div class="empty-text">No events logged today yet</div></div>');
+    UI.setHTML('dash-timeline',events.length?events.map(e=>`<div class="tl-item" style="--tl-color:${e.color}"><div class="tl-time">${UI._esc(e.time||'—')}</div><div class="tl-content"><div class="tl-title">${UI._esc(e.title)}</div><div class="tl-sub">${UI._esc(e.sub)}</div></div></div>`).join(''):'<div class="empty-state" style="padding:20px"><div class="empty-text">No events logged today yet</div></div>');
   },
   renderAlerts(){
     const alerts=AlertEngine.generate();
     const ec=document.getElementById('alerts-count');if(ec)ec.textContent=alerts.length?`${alerts.length} alert${alerts.length>1?'s':''}` :'';
-    UI.setHTML('dash-alerts',alerts.length?alerts.map(a=>`<div class="li"><div style="font-size:20px">${a.icon}</div><div class="li-body"><div class="li-title">${a.title}</div><div class="li-sub">${a.sub}</div></div><span class="chip chip-${a.chipColor}">${a.level}</span></div>`).join(''):'<div class="empty-state" style="padding:20px"><span class="empty-icon">🎉</span><div class="empty-text">No alerts — everything looks great!</div></div>');
+    UI.setHTML('dash-alerts',alerts.length?alerts.map(a=>`<div class="li"><div style="font-size:20px">${a.icon}</div><div class="li-body"><div class="li-title">${UI._esc(a.title)}</div><div class="li-sub">${UI._esc(a.sub)}</div></div><span class="chip chip-${a.chipColor}">${a.level}</span></div>`).join(''):'<div class="empty-state" style="padding:20px"><span class="empty-icon">🎉</span><div class="empty-text">No alerts — everything looks great!</div></div>');
   },
   renderMood(){
     const moods=[{e:'😢',l:'Sad'},{e:'😕',l:'Meh'},{e:'😐',l:'Okay'},{e:'😊',l:'Good'},{e:'🤩',l:'Amazing'}];
@@ -2409,7 +2409,7 @@ const Grocery={
     if(soon.length)alerts.push({icon:'⏰',text:soon.map(i=>i.name).join(', ')+' expiring in 1-3 days',color:'var(--a-orange)'});
     if(low.length)alerts.push({icon:'📉',text:low.map(i=>i.name).join(', ')+' running low',color:'var(--a-orange)'});
     const el=document.getElementById('groc-alerts-card');if(!el)return;
-    el.innerHTML=alerts.length?`<div class="font-700 text-sm mb-md">⚡ Pantry Alerts</div>${alerts.map(a=>`<div style="display:flex;gap:9px;padding:8px;border-radius:var(--r-sm);background:rgba(255,255,255,.03);margin-bottom:5px"><span>${a.icon}</span><span style="font-size:12px;color:${a.color}">${a.text}</span></div>`).join('')}`:'<div class="empty-state" style="padding:14px"><div class="empty-text">All items looking good ✅</div></div>';
+    el.innerHTML=alerts.length?`<div class="font-700 text-sm mb-md">⚡ Pantry Alerts</div>${alerts.map(a=>`<div style="display:flex;gap:9px;padding:8px;border-radius:var(--r-sm);background:rgba(255,255,255,.03);margin-bottom:5px"><span>${a.icon}</span><span style="font-size:12px;color:${a.color}">${UI._esc(a.text)}</span></div>`).join('')}`:'<div class="empty-state" style="padding:14px"><div class="empty-text">All items looking good ✅</div></div>';
     Dashboard.updateGroceryBadge();
   },
   renderStats(){
@@ -2855,7 +2855,7 @@ const Analytics={
       {i:'😴',text:`Sleep ${s.health.sleep}h. ${s.health.sleep<7?'Every extra 30min improves focus ~15%.':'In healthy range ✅'}`,type:'health'},
       {i:'📦',text:`${s.grocery.items.filter(i=>i.stock==='low').length} items low. Plan shopping to avoid emergency runs.`,type:'grocery'},
       {i:'💪',text:`${s.health.workouts.length} workouts logged. ${s.health.workouts.length>=3?'Excellent!':'Aim for 3+/week.'}`,type:'fitness'},
-    ].map(ins=>`<div class="li"><div style="font-size:22px;width:32px">${ins.i}</div><div class="li-body"><div style="font-size:13px;line-height:1.5">${ins.text}</div><span class="chip chip-purple" style="margin-top:4px">${ins.type}</span></div></div>`).join(''));
+    ].map(ins=>`<div class="li"><div style="font-size:22px;width:32px">${ins.i}</div><div class="li-body"><div style="font-size:13px;line-height:1.5">${UI._esc(ins.text)}</div><span class="chip chip-purple" style="margin-top:4px">${ins.type}</span></div></div>`).join(''));
   },
 };
 
@@ -4200,9 +4200,9 @@ const Beta = {
             <div>🔥 Streak: ${maxStreak}d</div>
           </div>
         </div>
-        ${meds.length?`<div style="margin-bottom:10px;font-size:13px">💊 <strong>Medicines:</strong> ${meds.map(m=>`${m.name} at ${m.time}`).join(', ')}</div>`:``}
-        ${subs.length?`<div style="margin-bottom:10px;font-size:13px">📱 <strong>Bills due:</strong> ${subs.map(s=>`${s.name} (${APP.fc(s.amount)})`).join(', ')}</div>`:``}
-        ${tasks.filter(t=>t.priority==='High').length?`<div style="margin-bottom:10px;font-size:13px">🎯 <strong>Priority today:</strong> ${tasks.filter(t=>t.priority==='High').map(t=>t.title).slice(0,2).join(', ')}</div>`:``}
+        ${meds.length?`<div style="margin-bottom:10px;font-size:13px">💊 <strong>Medicines:</strong> ${meds.map(m=>`${UI._esc(m.name)} at ${UI._esc(m.time)}`).join(', ')}</div>`:``}
+        ${subs.length?`<div style="margin-bottom:10px;font-size:13px">📱 <strong>Bills due:</strong> ${subs.map(s=>`${UI._esc(s.name)} (${APP.fc(s.amount)})`).join(', ')}</div>`:``}
+        ${tasks.filter(t=>t.priority==='High').length?`<div style="margin-bottom:10px;font-size:13px">🎯 <strong>Priority today:</strong> ${tasks.filter(t=>t.priority==='High').map(t=>UI._esc(t.title)).slice(0,2).join(', ')}</div>`:``}
         ${insights.length?`<div style="background:rgba(79,195,247,.07);border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.7;color:var(--c-text2)">${insights.join('<br>')}</div>`:''}
         <div style="margin-top:12px;font-size:12px;color:var(--c-text3);font-style:italic;text-align:center">"Small daily wins lead to massive life transformations." 💪</div>
       `;
@@ -4268,7 +4268,7 @@ const Beta = {
     // Reminders list
     const rl = document.getElementById('bt-reminders-list');
     if (rl) {
-      rl.innerHTML = rems.length ? rems.slice(0,5).map(r=>`<div style="padding:4px 0;border-bottom:1px solid var(--c-border)">${Alarm._typeEmoji(r.type)} <strong>${r.title}</strong> — ${new Date(r.fireAt).toLocaleString('en-IN',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}</div>`).join('') : '<div style="color:var(--c-text3)">No active reminders</div>';
+      rl.innerHTML = rems.length ? rems.slice(0,5).map(r=>`<div style="padding:4px 0;border-bottom:1px solid var(--c-border)">${Alarm._typeEmoji(r.type)} <strong>${UI._esc(r.title)}</strong> — ${new Date(r.fireAt).toLocaleString('en-IN',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}</div>`).join('') : '<div style="color:var(--c-text3)">No active reminders</div>';
     }
   },
 
