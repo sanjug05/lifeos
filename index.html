@@ -2156,6 +2156,11 @@ const LifeScore = {
    SEED DEMO DATA
    ============================================================ */
 function seedData() {
+  /* Demo/sample data has been removed. LifeOS now starts completely empty and is
+     populated only with the user's real data via onboarding and in-app actions.
+     This function is intentionally a no-op (kept so existing call sites stay valid). */
+  return;
+  /* eslint-disable no-unreachable */
   const s=APP.state;
   if(!s.finance.transactions.length){
     const cats=['Food','Transport','Shopping','Entertainment','Bills','Groceries','Health'];
@@ -3028,7 +3033,11 @@ const Onboard={
    NOTIFICATIONS ENGINE
    ============================================================ */
 const Notifs={
-  start(){if(this._started)return;this._started=true;APP.runtime.intervals.push(setInterval(()=>this.check(),80000));},
+  // Periodic random motivational toasts were removed — they spammed the UI.
+  // Genuine, time-based reminders (medicines, bills, tasks) are handled by the
+  // Alarm engine instead. start() is now a no-op; check() can still be called
+  // manually if a one-off nudge is ever needed.
+  start(){this._started=true;},
   check(){
     if(!APP.state.settings?.notifications)return;
     const msgs=[
@@ -4624,8 +4633,18 @@ function bootApp() {
   // 1. Load & validate state
   APP.load();
 
-  // 2. Seed demo/sample data if first run
-  if (APP.state.onboarded) seedData();
+  // 2. One-time migration: purge any legacy demo/sample data so every existing
+  //    install starts fresh with the user's real data only. Preserves the user's
+  //    AI key and theme, then sends them through onboarding to enter real details.
+  if (!APP.state.meta || !APP.state.meta.demoPurged) {
+    const fresh = JSON.parse(JSON.stringify(APP.DEFAULTS));
+    fresh.settings.geminiKey = APP.state.settings?.geminiKey || '';
+    fresh.settings.aiModel = APP.state.settings?.aiModel || 'gemini-2.5-flash';
+    fresh.settings.theme = APP.state.settings?.theme || 'dark';
+    fresh.meta = { demoPurged: true };
+    APP.state = validateAndRepairState(fresh);
+    APP.save();
+  }
 
   // 3. Apply theme immediately (before any render)
   UI._applyTheme();
@@ -4672,7 +4691,7 @@ function _startOnboarding() {
   // Wire onboarding completion to re-enter bootApp
   Onboard._onComplete = () => {
     // onboarded flag already set by Onboard.complete()
-    seedData();
+    // No demo data — the user starts with a clean, real account.
     APP.runtime.splashDone = false; // allow splash for new users
     APP.runtime.booted = false;
     APP.runtime.booting = false;
