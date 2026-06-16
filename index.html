@@ -1901,27 +1901,10 @@ const APP = {
     onboarded: false,
     lastSaved: null,
   },
-  load() {
-    try {
-      const raw = localStorage.getItem('lifeos_v4');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        this.state = this._merge(JSON.parse(JSON.stringify(this.DEFAULTS)), parsed);
-      } else {
-        this.state = JSON.parse(JSON.stringify(this.DEFAULTS));
-      }
-    } catch(e) {
-      this.state = JSON.parse(JSON.stringify(this.DEFAULTS));
-    }
-  },
-  save() {
-    try {
-      this.state.lastSaved = Date.now();
-      localStorage.setItem('lifeos_v4', JSON.stringify(this.state));
-    } catch(e) {
-      UI.toast('Storage full — data may not save', 'warning');
-    }
-  },
+  // NOTE: APP.load() and APP.save() are defined as the canonical implementations
+  // in the STORAGE HELPERS section below (loadState/saveState), which also run
+  // validateAndRepairState(). They are assigned to APP at parse time, before any
+  // boot call, so there is a single source of truth for persistence.
   _merge(target, source) {
     for (const k in source) {
       if (source[k] !== null && typeof source[k] === 'object' && !Array.isArray(source[k])) {
@@ -2919,7 +2902,7 @@ const Settings={
   export(){const blob=new Blob([JSON.stringify(APP.state,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`lifeos-backup-${APP.today()}.json`;a.click();URL.revokeObjectURL(a.href);UI.toast('Data exported!','success');},
   importPrompt(){document.getElementById('import-file')?.click();},
   importFile(e){const file=e.target.files?.[0];if(!file)return;const r=new FileReader();r.onload=(ev)=>{try{const data=JSON.parse(ev.target.result);if(!data.user||!data.finance)throw new Error('Invalid');APP.state=APP._merge(JSON.parse(JSON.stringify(APP.DEFAULTS)),data);APP.save();UI.toast('Imported! Refreshing…','success');setTimeout(()=>location.reload(),1200);}catch{UI.toast('Invalid backup file','error');}};r.readAsText(file);},
-  confirmReset(){if(confirm('⚠️ Reset ALL LifeOS data?\n\nThis cannot be undone.')){localStorage.removeItem('lifeos_v4');UI.toast('Resetting…','info');setTimeout(()=>location.reload(),800);}},
+  confirmReset(){if(confirm('⚠️ Reset ALL LifeOS data?\n\nThis cannot be undone.')){resetAllData();UI.toast('Resetting…','info');setTimeout(()=>location.reload(),800);}},
 };
 
 /* ============================================================
@@ -4589,7 +4572,8 @@ function resetSection(section) {
 }
 
 /* ============================================================
-   PATCH APP METHODS TO USE NEW HELPERS
+   CANONICAL APP PERSISTENCE METHODS
+   (single source of truth — assigned before any boot call)
    ============================================================ */
 APP.save = saveState;
 APP.load = function() {
