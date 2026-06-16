@@ -1822,6 +1822,35 @@ textarea.input{resize:vertical;min-height:72px;line-height:1.5}
         <div class="set-row"><div><div class="set-label">Compact View</div><div class="set-sub">Denser layout for more content</div></div><label class="toggle"><input type="checkbox" id="set-compact" onchange="Settings.toggleCompact()"><div class="toggle-track"></div></label></div>
       </div>
       <div class="card mb-xl">
+        <div class="font-700 text-sm mb-lg" style="text-transform:uppercase;letter-spacing:0.5px;color:var(--c-text2)">🤖 AI Assistant (Google Gemini)</div>
+        <div class="set-sub" style="margin-bottom:var(--sp-lg);line-height:1.6">
+          Add your own free Google Gemini API key to power the AI chat with real intelligence. Get one at
+          <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:var(--a-blue);text-decoration:underline">aistudio.google.com/apikey</a>.
+          Your key is stored only in this browser and is never sent anywhere except Google's API.
+        </div>
+        <div class="field" style="margin-bottom:var(--sp-md)">
+          <div class="field-label">Gemini API Key</div>
+          <input class="input" id="set-gemini-key" type="password" placeholder="AIza… (leave blank to use offline mode)" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="field" style="margin-bottom:var(--sp-md)">
+          <div class="field-label">Model</div>
+          <select class="input" id="set-ai-model">
+            <option value="gemini-2.5-flash">Gemini 2.5 Flash (fast, recommended)</option>
+            <option value="gemini-2.5-pro">Gemini 2.5 Pro (most capable)</option>
+            <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+            <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:var(--sp-sm);flex-wrap:wrap;align-items:center">
+          <button class="btn btn-primary btn-sm" onclick="Settings.saveAIConfig()">💾 Save AI Settings</button>
+          <button class="btn btn-secondary btn-sm" onclick="Settings.testAI()">🔌 Test Connection</button>
+          <span class="chip" id="set-ai-status" style="background:var(--c-surface2);color:var(--c-text2)">Offline mode</span>
+        </div>
+        <div class="set-sub" style="margin-top:var(--sp-md);line-height:1.6;color:var(--c-text3)">
+          ⚠️ When AI chat is used with a key set, your question and a summary of your LifeOS data are sent to Google to generate a reply. With no key set, the assistant runs fully offline using built-in logic.
+        </div>
+      </div>
+      <div class="card mb-xl">
         <div class="font-700 text-sm mb-lg" style="text-transform:uppercase;letter-spacing:0.5px;color:var(--c-text2)">Data Management</div>
         <div style="display:flex;gap:var(--sp-sm);flex-wrap:wrap">
           <button class="btn btn-secondary btn-sm" onclick="Settings.export()">📤 Export JSON</button>
@@ -1862,7 +1891,7 @@ const APP = {
   state: null,
   DEFAULTS: {
     user: { name:'Alex', budget:50000, currency:'₹', waterGoal:8, stepsGoal:10000, calGoal:2000, protGoal:150, carbGoal:250, fatGoal:65 },
-    settings: { theme:'dark', notifications:true, aiInsights:true, compact:false },
+    settings: { theme:'dark', notifications:true, aiInsights:true, compact:false, geminiKey:'', aiModel:'gemini-2.5-flash' },
     finance: { transactions:[], subscriptions:[] },
     grocery: { items:[], shoppingList:[] },
     health: { water:0, steps:0, sleep:7.5, bedtime:'23:00', waketime:'06:30', weights:[], workouts:[], medicines:[], mood:'', moodLabel:'', stress:5 },
@@ -2642,11 +2671,19 @@ const Habits={
    ============================================================ */
 const AI={
   initialized:false,
+  history:[],
+  _busy:false,
   SUGGESTIONS:['How am I spending?','How to save money?','My health summary','Grocery status','Habit progress','Today\'s tasks','Nutrition check','Life score','What should I focus on?'],
+  _hasKey(){return !!(APP.state.settings.geminiKey||'').trim();},
   init(){
     if(this.initialized)return;this.initialized=true;
-    this.addMsg(`Hey ${APP.state.user.name||'there'}! 👋 I'm your LifeOS AI — powered by your actual data.\n\nAsk me about spending, health, habits, grocery, tasks, or get your full life score analysis!`,'ai');
-    UI.setHTML('chat-suggest',this.SUGGESTIONS.map(s=>`<div class="cs-chip" onclick="AI.ask('${s}')">${s}</div>`).join(''));
+    this.history=[];
+    const live=this._hasKey();
+    const intro=live
+      ? `Hey ${APP.state.user.name||'there'}! 👋 I'm your LifeOS AI, powered by Google Gemini and your real data.\n\nAsk me anything about your finances, health, habits, food, grocery, or tasks — I'll reason over your actual numbers and give you tailored advice.`
+      : `Hey ${APP.state.user.name||'there'}! 👋 I'm your LifeOS AI (offline mode).\n\nI can summarize your spending, health, habits, grocery, and tasks. 💡 For smarter, conversational answers, add a free Google Gemini API key in Settings → AI Assistant.`;
+    this.addMsg(intro,'ai');
+    UI.setHTML('chat-suggest',this.SUGGESTIONS.map((s,i)=>`<div class="cs-chip" onclick="AI.askIdx(${i})">${UI._esc(s)}</div>`).join(''));
     this.renderInsightCards();
   },
   renderInsightCards(){
@@ -2657,10 +2694,89 @@ const AI={
     UI.setHTML('ai-insight-cards',cards.map(c=>`<div class="card"><div class="text-xs text-muted font-700" style="text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">${c.title}</div><div style="font-size:22px;font-weight:800;color:${c.c}">${c.val}</div><div class="text-xs text-muted mt-sm">${c.sub}</div></div>`).join(''));
   },
   ask(q){document.getElementById('chat-input').value=q;this.send();},
-  send(){
-    const input=document.getElementById('chat-input');const text=input?.value?.trim();if(!text)return;
+  askIdx(i){this.ask(this.SUGGESTIONS[i]||'');},
+  async send(){
+    const input=document.getElementById('chat-input');const text=input?.value?.trim();
+    if(!text||this._busy)return;
     this.addMsg(text,'user');input.value='';input.style.height='auto';
-    this.showTyping();setTimeout(()=>{this.removeTyping();this.addMsg(this.genResponse(text),'ai');},700+Math.random()*600);
+    // Offline fallback when no API key configured
+    if(!this._hasKey()){
+      this.showTyping();
+      setTimeout(()=>{this.removeTyping();this.addMsg(this.genResponse(text),'ai');},500+Math.random()*500);
+      return;
+    }
+    this._busy=true;this.showTyping();
+    const key=APP.state.settings.geminiKey.trim();
+    const model=APP.state.settings.aiModel||'gemini-2.5-flash';
+    try{
+      const reply=await this.callGemini(text,this.history,key,model);
+      this.removeTyping();
+      const answer=(reply&&reply.trim())?reply.trim():this.genResponse(text);
+      this.addMsg(answer,'ai');
+      // Maintain short rolling conversation history (last 12 turns)
+      this.history.push({role:'user',parts:[{text}]},{role:'model',parts:[{text:answer}]});
+      if(this.history.length>24)this.history=this.history.slice(-24);
+    }catch(err){
+      this.removeTyping();
+      this.addMsg(this.genResponse(text)+`\n\n⚠️ (Live AI unavailable: ${UI._esc(err.message||'request failed')}. Showing offline summary. Check your key in Settings.)`,'ai');
+    }finally{
+      this._busy=false;
+    }
+  },
+  async callGemini(prompt,history,key,model){
+    const url=`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`;
+    const body={
+      systemInstruction:{parts:[{text:this._systemPrompt()}]},
+      contents:[...history,{role:'user',parts:[{text:prompt}]}],
+      generationConfig:{temperature:0.7,maxOutputTokens:1024,topP:0.95},
+    };
+    const res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(!res.ok){
+      let msg='HTTP '+res.status;
+      try{const e=await res.json();msg=e?.error?.message||msg;}catch(_){}
+      if(res.status===400&&/api key/i.test(msg))msg='Invalid API key';
+      if(res.status===429)msg='Rate limit / quota exceeded';
+      throw new Error(msg);
+    }
+    const data=await res.json();
+    const cand=data?.candidates?.[0];
+    if(cand?.finishReason==='SAFETY')throw new Error('Response blocked by safety filter');
+    const parts=cand?.content?.parts||[];
+    return parts.map(p=>p.text||'').join('').trim();
+  },
+  _systemPrompt(){
+    return `You are LifeOS AI, a warm, concise personal life-coach assistant embedded in the user's "LifeOS" app. `
+      +`You help with finance, health, nutrition, habits, grocery, tasks and overall wellbeing. `
+      +`Always ground your answers in the user's real data provided below. Be specific with their numbers, use the user's currency symbol, keep replies short and scannable (use bullet points and emojis sparingly), and end with one concrete next action when relevant. `
+      +`If asked about something outside the data, give brief general guidance and suggest what to track. Never invent data you weren't given.\n\n`
+      +`=== USER DATA SNAPSHOT (${APP.today()}) ===\n${this.buildContext()}`;
+  },
+  buildContext(){
+    const s=APP.state,t=APP.today(),m=new Date().toISOString().slice(0,7);
+    const fc=n=>APP.fc(n);
+    const tx=s.finance.transactions;
+    const exp=tx.filter(x=>x.type==='expense'&&x.date?.startsWith(m)).reduce((a,x)=>a+x.amount,0);
+    const inc=tx.filter(x=>x.type==='income'&&x.date?.startsWith(m)).reduce((a,x)=>a+x.amount,0);
+    const bud=s.user.budget||50000;
+    const byCat={};tx.filter(x=>x.type==='expense'&&x.date?.startsWith(m)).forEach(x=>{byCat[x.cat||'Other']=(byCat[x.cat||'Other']||0)+x.amount;});
+    const catStr=Object.entries(byCat).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([c,v])=>`${c}: ${fc(v)}`).join(', ')||'none';
+    const subs=s.finance.subscriptions||[];
+    const meals=s.food.meals.filter(x=>x.date===t);
+    const cal=meals.reduce((a,x)=>a+(x.cal||0),0),prot=meals.reduce((a,x)=>a+(x.protein||0),0);
+    const habLog=s.habits.log[t]||[];const habDone=habLog.filter(l=>l.done).length;
+    const maxStreak=s.habits.list.length?Math.max(0,...s.habits.list.map(h=>h.streak||0)):0;
+    const tasksToday=s.tasks.tasks.filter(x=>x.date===t);
+    const lowGroc=s.grocery.items.filter(i=>i.stock==='low').map(i=>i.name);
+    const score=(typeof LifeScore!=='undefined')?LifeScore.calc():{total:'?'};
+    return [
+      `Name: ${s.user.name||'User'} | Currency: ${s.user.currency||'₹'} | Life score: ${score.total}%`,
+      `FINANCE (this month): income ${fc(inc)}, spent ${fc(exp)} of ${fc(bud)} budget (${Math.round(exp/bud*100)}%). Top categories: ${catStr}. Subscriptions: ${subs.length} (${fc(subs.reduce((a,x)=>a+x.amount,0))}/mo).`,
+      `HEALTH (today): water ${s.health.water}/${s.user.waterGoal} glasses, steps ${s.health.steps}/${s.user.stepsGoal||10000}, sleep ${s.health.sleep}h, stress ${s.health.stress}/10, mood ${s.health.mood||'not logged'}.`,
+      `NUTRITION (today): ${cal}/${s.user.calGoal||2000} kcal, protein ${prot}g, ${meals.length} meals logged.`,
+      `HABITS: ${habDone}/${s.habits.list.length} done today, best streak ${maxStreak} days, XP ${s.habits.xp} (level ${Math.floor((s.habits.xp||0)/100)+1}).`,
+      `TASKS (today): ${tasksToday.filter(x=>x.done).length}/${tasksToday.length} done, ${tasksToday.filter(x=>!x.done&&x.priority==='High').length} high-priority pending.`,
+      `GROCERY: ${s.grocery.items.length} items tracked, low stock: ${lowGroc.length?lowGroc.join(', '):'none'}, shopping list: ${(s.grocery.shoppingList||[]).length} items.`,
+    ].join('\n');
   },
   genResponse(text){
     const l=text.toLowerCase();const s=APP.state;const t=APP.today();
@@ -2756,6 +2872,38 @@ const Settings={
     const ai=document.getElementById('set-ai');if(ai)ai.checked=st.settings.aiInsights!==false;
     const cp=document.getElementById('set-compact');if(cp)cp.checked=st.settings.compact===true;
     const su=document.getElementById('set-storage');if(su){const b=JSON.stringify(st).length;su.textContent=b>1024?`${(b/1024).toFixed(1)} KB`:`${b} bytes`;}
+    const gk=document.getElementById('set-gemini-key');if(gk)gk.value=st.settings.geminiKey||'';
+    const am=document.getElementById('set-ai-model');if(am)am.value=st.settings.aiModel||'gemini-2.5-flash';
+    this._updateAIStatus();
+  },
+  _updateAIStatus(text,color){
+    const el=document.getElementById('set-ai-status');if(!el)return;
+    if(text){el.textContent=text;el.style.background=color||'var(--c-surface2)';el.style.color=color?'#fff':'var(--c-text2)';return;}
+    const on=!!(APP.state.settings.geminiKey||'').trim();
+    el.textContent=on?'✅ AI active':'Offline mode';
+    el.style.background=on?'rgba(102,187,106,0.15)':'var(--c-surface2)';
+    el.style.color=on?'var(--a-green)':'var(--c-text2)';
+  },
+  saveAIConfig(){
+    const key=(document.getElementById('set-gemini-key')?.value||'').trim();
+    const model=document.getElementById('set-ai-model')?.value||'gemini-2.5-flash';
+    APP.state.settings.geminiKey=key;APP.state.settings.aiModel=model;APP.save();
+    AI.initialized=false;this._updateAIStatus();
+    UI.toast(key?'AI settings saved — Gemini active':'AI settings saved — offline mode','success');
+  },
+  async testAI(){
+    const key=(document.getElementById('set-gemini-key')?.value||'').trim();
+    const model=document.getElementById('set-ai-model')?.value||'gemini-2.5-flash';
+    if(!key){this._updateAIStatus('No key set','var(--a-orange)');return UI.toast('Enter an API key first','warning');}
+    this._updateAIStatus('Testing…','var(--a-blue)');
+    try{
+      const reply=await AI.callGemini('Reply with exactly: OK',[],key,model);
+      if(reply&&reply.trim()){this._updateAIStatus('✅ Connected','var(--a-green)');UI.toast('Gemini connected!','success');}
+      else throw new Error('Empty response');
+    }catch(err){
+      this._updateAIStatus('❌ Failed','var(--a-red)');
+      UI.toast('Connection failed: '+(err.message||'check key/model'),'error');
+    }
   },
   updateName(){const v=document.getElementById('set-name')?.value||'';APP.state.user.name=v;UI.updateUserUI();APP.save();},
   save(){
@@ -4405,6 +4553,8 @@ function validateAndRepairState(s) {
   // settings defaults
   if (typeof s.settings.theme !== 'string') s.settings.theme = 'dark';
   if (typeof s.settings.notifications !== 'boolean') s.settings.notifications = true;
+  if (typeof s.settings.geminiKey !== 'string') s.settings.geminiKey = '';
+  if (typeof s.settings.aiModel !== 'string' || !s.settings.aiModel) s.settings.aiModel = 'gemini-2.5-flash';
   if (typeof s.onboarded !== 'boolean') s.onboarded = false;
   // meta flags inside state
   if (!s.meta) s.meta = {};
