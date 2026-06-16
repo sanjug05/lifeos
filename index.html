@@ -1137,17 +1137,28 @@ textarea.input{resize:vertical;min-height:72px;line-height:1.5}
       <div class="ob-step">
         <span class="ob-emoji">👤</span>
         <div class="ob-title">Set Up Your Profile</div>
-        <div class="ob-desc">Quick personalization to power your AI insights.</div>
-        <div style="text-align:left;margin-bottom:4px">
-          <div class="field"><div class="field-label">Your Name</div><input class="input" id="ob-name" placeholder="e.g. Alex" value="Alex" autocomplete="given-name"></div>
+        <div class="ob-desc">Enter your real details — everything in LifeOS will be personalized to you.</div>
+        <div style="text-align:left;margin-bottom:4px;max-height:48vh;overflow-y:auto;padding-right:4px">
+          <div class="field"><div class="field-label">Your Name</div><input class="input" id="ob-name" placeholder="Enter your name" autocomplete="name"></div>
           <div class="field"><div class="field-label">Monthly Budget</div>
             <div style="display:flex;gap:8px;align-items:center">
-              <select class="input" id="ob-currency" style="width:80px"><option value="₹">₹ INR</option><option value="$">$ USD</option><option value="€">€ EUR</option><option value="£">£ GBP</option></select>
-              <input class="input" id="ob-budget" type="number" placeholder="50000" value="50000">
+              <select class="input" id="ob-currency" style="width:94px"><option value="₹">₹ INR</option><option value="$">$ USD</option><option value="€">€ EUR</option><option value="£">£ GBP</option><option value="¥">¥ JPY</option><option value="₩">₩ KRW</option><option value="A$">A$ AUD</option><option value="C$">C$ CAD</option></select>
+              <input class="input" id="ob-budget" type="number" inputmode="numeric" placeholder="e.g. 50000">
             </div>
           </div>
-          <div class="field"><div class="field-label">Daily Water Goal (glasses)</div><input class="input" id="ob-water" type="number" placeholder="8" value="8"></div>
-          <div class="field"><div class="field-label">Daily Step Goal</div><input class="input" id="ob-steps" type="number" placeholder="10000" value="10000"></div>
+          <div class="field"><div class="field-label">Monthly Income (optional)</div><input class="input" id="ob-income" type="number" inputmode="numeric" placeholder="e.g. 80000"></div>
+          <div class="input-row">
+            <div class="field"><div class="field-label">Water Goal (glasses)</div><input class="input" id="ob-water" type="number" inputmode="numeric" placeholder="8" value="8"></div>
+            <div class="field"><div class="field-label">Step Goal</div><input class="input" id="ob-steps" type="number" inputmode="numeric" placeholder="10000" value="10000"></div>
+          </div>
+          <div class="input-row">
+            <div class="field"><div class="field-label">Calorie Goal (kcal)</div><input class="input" id="ob-cal" type="number" inputmode="numeric" placeholder="2000" value="2000"></div>
+            <div class="field"><div class="field-label">Sleep Goal (hours)</div><input class="input" id="ob-sleep" type="number" inputmode="decimal" placeholder="8" value="8"></div>
+          </div>
+          <div class="input-row">
+            <div class="field"><div class="field-label">Wake Time</div><input class="input" id="ob-wake" type="time" value="06:30"></div>
+            <div class="field"><div class="field-label">Bed Time</div><input class="input" id="ob-bed" type="time" value="23:00"></div>
+          </div>
         </div>
       </div>
       <div class="ob-step">
@@ -1168,7 +1179,7 @@ textarea.input{resize:vertical;min-height:72px;line-height:1.5}
       <div class="ob-step">
         <span class="ob-emoji">✅</span>
         <div class="ob-title">You're All Set!</div>
-        <div class="ob-desc">LifeOS AI is fully loaded. Your data is private — stored only on your device. Press start to begin your journey.</div>
+        <div class="ob-desc">Your LifeOS starts fresh and clean — no sample data, just yours. Everything you log stays private on this device. Press start to begin your journey.</div>
       </div>
     </div>
     <button class="btn btn-primary btn-block btn-lg" id="ob-btn" onclick="Onboard.next()" style="margin-top:4px">Get Started →</button>
@@ -1917,7 +1928,7 @@ textarea.input{resize:vertical;min-height:72px;line-height:1.5}
 const APP = {
   state: null,
   DEFAULTS: {
-    user: { name:'Alex', budget:50000, currency:'₹', waterGoal:8, stepsGoal:10000, calGoal:2000, protGoal:150, carbGoal:250, fatGoal:65 },
+    user: { name:'', budget:0, income:0, currency:'₹', waterGoal:8, stepsGoal:10000, calGoal:2000, sleepGoal:8, protGoal:150, carbGoal:250, fatGoal:65 },
     settings: { theme:'dark', notifications:true, aiInsights:true, compact:false, geminiKey:'', aiModel:'gemini-2.5-flash' },
     finance: { transactions:[], subscriptions:[] },
     grocery: { items:[], shoppingList:[] },
@@ -3019,7 +3030,22 @@ const Onboard={
   step:0,total:6,
   buildDots(){const el=document.getElementById('ob-dots');if(!el)return;el.innerHTML=Array.from({length:this.total},(_,i)=>`<div class="ob-dot ${i===0?'active':''}"></div>`).join('');},
   next(){
-    if(this.step===1){APP.state.user.name=document.getElementById('ob-name')?.value?.trim()||'Alex';APP.state.user.budget=parseInt(document.getElementById('ob-budget')?.value)||50000;APP.state.user.waterGoal=parseInt(document.getElementById('ob-water')?.value)||8;APP.state.user.stepsGoal=parseInt(document.getElementById('ob-steps')?.value)||10000;APP.state.user.currency=document.getElementById('ob-currency')?.value||'₹';APP.save();}
+    if(this.step===1){
+      const nameEl=document.getElementById('ob-name');const nm=(nameEl?.value||'').trim();
+      if(!nm){UI.toast('Please enter your name to continue','warning');nameEl?.focus();return;}
+      const u=APP.state.user,num=(id,d)=>{const v=parseFloat(document.getElementById(id)?.value);return isNaN(v)?d:v;};
+      u.name=nm;
+      u.currency=document.getElementById('ob-currency')?.value||'₹';
+      u.budget=num('ob-budget',0);
+      u.income=num('ob-income',0);
+      u.waterGoal=num('ob-water',8);
+      u.stepsGoal=num('ob-steps',10000);
+      u.calGoal=num('ob-cal',2000);
+      u.sleepGoal=num('ob-sleep',8);
+      APP.state.health.waketime=document.getElementById('ob-wake')?.value||'06:30';
+      APP.state.health.bedtime=document.getElementById('ob-bed')?.value||'23:00';
+      APP.save();
+    }
     this.step++;if(this.step>=this.total){this.complete();return;}
     document.querySelectorAll('.ob-step').forEach((el,i)=>el.classList.toggle('active',i===this.step));
     document.querySelectorAll('.ob-dot').forEach((el,i)=>el.classList.toggle('active',i===this.step));
@@ -4566,7 +4592,7 @@ function validateAndRepairState(s) {
   if (typeof s.alarmSettings.morningBriefing !== 'boolean') s.alarmSettings.morningBriefing = true;
   // user defaults
   const du = D.user;
-  ['name','budget','currency','waterGoal','stepsGoal','calGoal','protGoal','carbGoal','fatGoal'].forEach(k => {
+  ['name','budget','income','currency','waterGoal','stepsGoal','calGoal','sleepGoal','protGoal','carbGoal','fatGoal'].forEach(k => {
     if (s.user[k] === undefined || s.user[k] === null) s.user[k] = du[k];
   });
   // settings defaults
