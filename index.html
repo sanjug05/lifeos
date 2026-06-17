@@ -2798,6 +2798,20 @@ const AI={
     const parts=cand?.content?.parts||[];
     return parts.map(p=>p.text||'').join('').trim();
   },
+  async classifyCategory(desc,cats){
+    const key=(APP.state.settings.geminiKey||'').trim();if(!key)throw new Error('no key');
+    const model=APP.state.settings.aiModel||'gemini-2.5-flash';
+    const url=`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`;
+    const body={
+      contents:[{role:'user',parts:[{text:`Classify this expense into exactly ONE of these categories: ${cats.join(', ')}.\nExpense description: "${desc}"\nReply with only the single category word, nothing else.`}]}],
+      generationConfig:{temperature:0,maxOutputTokens:256},
+    };
+    const res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const data=await res.json();
+    const txt=(data?.candidates?.[0]?.content?.parts||[]).map(p=>p.text||'').join('').trim();
+    return cats.find(c=>txt.toLowerCase().includes(c.toLowerCase()))||null;
+  },
   _systemPrompt(){
     return `You are LifeOS AI, a warm, concise personal life-coach assistant embedded in the user's "LifeOS" app. `
       +`You help with finance, health, nutrition, habits, grocery, tasks and overall wellbeing. `
@@ -2987,7 +3001,7 @@ const QA={
   _switch(tab){this._tab=tab;this._renderTabs();this._renderForm(tab);},
   _renderForm(tab){
     const forms={
-      expense:`<div class="field"><div class="field-label">Amount</div><input class="input" id="qa-amount" type="number" placeholder="0" min="0" autofocus></div><div class="field"><div class="field-label">Description</div><input class="input" id="qa-desc" placeholder="What did you spend on?"></div><div class="field"><div class="field-label">Category</div><select class="input" id="qa-cat"><option value="Food">🍕 Food</option><option value="Transport">🚗 Transport</option><option value="Shopping">🛍️ Shopping</option><option value="Entertainment">🎬 Entertainment</option><option value="Health">💊 Health</option><option value="Bills">📱 Bills</option><option value="Groceries">🛒 Groceries</option><option value="Other">📦 Other</option></select></div><button class="btn btn-primary btn-block" onclick="QA.submitExpense()">Add Expense</button>`,
+      expense:`<div class="field"><div class="field-label">Amount</div><input class="input" id="qa-amount" type="number" placeholder="0" min="0" autofocus></div><div class="field"><div class="field-label">Description</div><input class="input" id="qa-desc" placeholder="e.g. Zomato dinner, Uber ride" oninput="QA.autoCategory()"></div><div class="field"><div class="field-label">Category <span id="qa-cat-hint" style="color:var(--a-purple);font-weight:700;font-size:11px;margin-left:4px"></span></div><select class="input" id="qa-cat"><option value="Food">🍕 Food</option><option value="Transport">🚗 Transport</option><option value="Shopping">🛍️ Shopping</option><option value="Entertainment">🎬 Entertainment</option><option value="Health">💊 Health</option><option value="Bills">📱 Bills</option><option value="Groceries">🛒 Groceries</option><option value="Other">📦 Other</option></select></div><button class="btn btn-primary btn-block" onclick="QA.submitExpense()">Add Expense</button>`,
       income:`<div class="field"><div class="field-label">Amount</div><input class="input" id="qa-inc-amount" type="number" placeholder="0" min="0" autofocus></div><div class="field"><div class="field-label">Source</div><input class="input" id="qa-inc-desc" placeholder="e.g. Salary, Freelance"></div><button class="btn btn-success btn-block" onclick="QA.submitIncome()">Add Income</button>`,
       task:`<div class="field"><div class="field-label">Task Name</div><input class="input" id="qa-task" placeholder="What needs to be done?" autofocus></div><div class="field"><div class="field-label">Priority</div><select class="input" id="qa-prio"><option value="High">🔴 High</option><option value="Medium">🟡 Medium</option><option value="Low">🟢 Low</option></select></div><div class="field"><div class="field-label">Due Time</div><input class="input" id="qa-due" type="time"></div><button class="btn btn-primary btn-block" onclick="QA.submitTask()">Add Task</button>`,
       grocery:`<div class="field"><div class="field-label">Item Name</div><input class="input" id="qa-groc" placeholder="e.g. Milk" autofocus></div><div class="field"><div class="field-label">Quantity</div><input class="input" id="qa-groc-qty" placeholder="e.g. 2 litres"></div><div class="field"><div class="field-label">Stock Level</div><select class="input" id="qa-groc-stock"><option value="high">🟢 High</option><option value="medium">🟡 Medium</option><option value="low">🔴 Low</option></select></div><button class="btn btn-primary btn-block" onclick="QA.submitGrocery()">Add to Pantry</button>`,
@@ -3000,6 +3014,44 @@ const QA={
   setEmoji(el,emoji){this._emoji=emoji;document.querySelectorAll('#qa-emoji-row .emoji-opt').forEach(e=>e.classList.remove('selected'));el.classList.add('selected');},
   adjWater(d){this._water=Math.max(1,Math.min(10,this._water+d));const e=document.getElementById('qa-water-count');if(e)e.textContent=this._water;},
   submitExpense(){const a=parseFloat(document.getElementById('qa-amount')?.value),d=document.getElementById('qa-desc')?.value?.trim(),c=document.getElementById('qa-cat')?.value;if(!a||a<=0)return UI.toast('Enter valid amount','error');if(!d)return UI.toast('Enter description','error');APP.state.finance.transactions.push({id:Date.now(),type:'expense',amount:a,desc:d,cat:c,date:APP.today(),notes:''});APP.save();UI.closeModal('qa-modal');UI.toast(`${APP.fc(a)} expense added`,'success');if(Nav.current==='dashboard')Dashboard.render();if(Nav.current==='finance')Finance.render();},
+  // ── AI / keyword expense auto-categorization ──────────────
+  _catKeywords:{
+    Food:['zomato','swiggy','restaurant','cafe','coffee','pizza','lunch','dinner','breakfast','food','snack','mcdonald','kfc','domino','burger','starbucks','tea','biryani','eat','meal','bakery'],
+    Transport:['uber','ola','cab','taxi','metro','bus','train','petrol','fuel','diesel','auto','parking','flight','irctc','rapido','toll','ride'],
+    Shopping:['amazon','flipkart','myntra','clothes','shoes','electronics','mall','shopping','ajio','meesho','nykaa','decathlon','ikea'],
+    Entertainment:['movie','netflix','spotify','game','cinema','pvr','inox','bookmyshow','hotstar','prime','concert','youtube','disney'],
+    Health:['pharmacy','doctor','medicine','hospital','apollo','clinic','gym','medical','dental','health','1mg','pharmeasy','lab','test'],
+    Bills:['electricity','recharge','bill','internet','wifi','gas','dth','postpaid','rent','emi','insurance','broadband','jio','airtel','vi '],
+    Groceries:['grocery','groceries','bigbasket','big basket','dmart','d-mart','vegetable','fruit','milk','kirana','blinkit','zepto','supermarket','instamart','eggs'],
+  },
+  _guessCategory(desc){const l=(desc||'').toLowerCase();for(const[cat,kw]of Object.entries(this._catKeywords)){if(kw.some(k=>l.includes(k)))return cat;}return null;},
+  _setCat(cat){const sel=document.getElementById('qa-cat');if(sel&&[...sel.options].some(o=>o.value===cat)){sel.value=cat;return true;}return false;},
+  autoCategory(){
+    clearTimeout(this._catTimer);
+    const desc=document.getElementById('qa-desc')?.value?.trim();
+    const hint=document.getElementById('qa-cat-hint');
+    if(!desc){if(hint)hint.textContent='';return;}
+    // 1) Instant offline keyword guess
+    const local=this._guessCategory(desc);
+    if(local){this._setCat(local);if(hint)hint.textContent='✨ '+local;}
+    // 2) Refine with Gemini if a key is configured (debounced)
+    if(AI._hasKey()){
+      if(hint)hint.textContent='✨ thinking…';
+      this._catTimer=setTimeout(()=>this._aiCategory(desc),650);
+    }
+  },
+  async _aiCategory(desc){
+    const hint=document.getElementById('qa-cat-hint');
+    const cats=['Food','Transport','Shopping','Entertainment','Health','Bills','Groceries','Other'];
+    const fallback=()=>{const g=this._guessCategory(desc);if(hint)hint.textContent=g?'✨ '+g:'';};
+    try{
+      const cat=await AI.classifyCategory(desc,cats);
+      // Ignore if user switched tab or cleared field meanwhile
+      if(this._tab!=='expense'||(document.getElementById('qa-desc')?.value?.trim()||'')!==desc)return;
+      if(cat&&cats.includes(cat)){this._setCat(cat);if(hint)hint.textContent='✨ '+cat;}
+      else fallback();
+    }catch(e){fallback();}
+  },
   submitIncome(){const a=parseFloat(document.getElementById('qa-inc-amount')?.value),d=document.getElementById('qa-inc-desc')?.value?.trim()||'Income';if(!a||a<=0)return UI.toast('Enter valid amount','error');APP.state.finance.transactions.push({id:Date.now(),type:'income',amount:a,desc:d,cat:'Other',date:APP.today(),notes:''});APP.save();UI.closeModal('qa-modal');UI.toast(`${APP.fc(a)} income recorded`,'success');if(Nav.current==='finance')Finance.render();},
   submitTask(){const title=document.getElementById('qa-task')?.value?.trim(),priority=document.getElementById('qa-prio')?.value,due=document.getElementById('qa-due')?.value;if(!title)return UI.toast('Enter task name','error');APP.state.tasks.tasks.push({id:Date.now(),title,priority,done:false,due,date:APP.today(),notes:''});APP.save();UI.closeModal('qa-modal');UI.toast('Task added!','success');if(Nav.current==='tasks')Tasks.renderList();if(Nav.current==='dashboard')Dashboard.renderTasks();},
   submitGrocery(){const name=document.getElementById('qa-groc')?.value?.trim(),qty=document.getElementById('qa-groc-qty')?.value?.trim(),stock=document.getElementById('qa-groc-stock')?.value;if(!name)return UI.toast('Enter item name','error');APP.state.grocery.items.push({id:Date.now(),name,qty:qty||'1',cat:'Other',stock,expiry:'',added:APP.today()});APP.save();UI.closeModal('qa-modal');UI.toast(`${name} added`,'success');if(Nav.current==='grocery')Grocery.render();},
