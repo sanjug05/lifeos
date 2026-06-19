@@ -1014,12 +1014,13 @@ textarea.input{resize:vertical;min-height:72px;line-height:1.5}
   background:var(--c-bg2);border:1px solid var(--c-border2);
   border-radius:var(--r-xl);padding:10px 12px;box-shadow:var(--shadow-lg);
   width:min(440px,calc(100vw - 24px));
-  transition:transform .45s cubic-bezier(.34,1.56,.64,1);
+  opacity:0;visibility:hidden;pointer-events:none;
+  transition:transform .45s cubic-bezier(.34,1.56,.64,1),opacity .3s ease,visibility .45s;
 }
-#install-banner.visible{transform:translateX(-50%) translateY(0)}
+#install-banner.visible{transform:translateX(-50%) translateY(0);opacity:1;visibility:visible;pointer-events:auto}
 #install-banner .ib-icon{width:34px;height:34px;border-radius:9px;flex-shrink:0}
 #install-banner .ib-text{font-size:12.5px;color:var(--c-text);line-height:1.4;flex:1}
-#install-banner .ib-close{background:none;border:none;color:var(--c-text3);font-size:15px;cursor:pointer;padding:4px;flex-shrink:0;line-height:1}
+#install-banner .ib-close{background:none;border:none;color:var(--c-text3);font-size:16px;cursor:pointer;padding:8px;margin:-4px;flex-shrink:0;line-height:1;min-width:32px;min-height:32px}
 @media(min-width:880px){#install-banner{bottom:calc(var(--safe-bottom) + 18px)}}
 /* Prevent iOS Safari auto-zoom on input focus (needs >=16px) */
 @media(max-width:768px){
